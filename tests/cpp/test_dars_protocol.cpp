@@ -5,6 +5,7 @@ using AES::AES11::_2009::core::DARSProtocol;
 using AES::AES11::_2009::core::DARSState;
 using AES::AES11::_2009::core::DARSEvent;
 
+// Verifies: REQ-F-SYNC-001 (DARS-referenced synchronization state transitions)
 // TEST-DARS-STATE-001: Validate initial transition Idle -> Acquire via requestAcquire()
 TEST(DARSProtocolTests, IdleToAcquireTransition) {
     DARSProtocol proto;

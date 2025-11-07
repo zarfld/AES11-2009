@@ -4,6 +4,7 @@
 
 using AES::AES11::_2009::core::TimingWindowProcessor;
 
+// Verifies: REQ-NF-PERF-003 (Timing accuracy & jitter metrics stability evaluation)
 // TEST-DM-TIMINGWIN-001: Correct mean and variance updates (including sliding window)
 TEST(TimingWindowProcessorTests, MeanAndVarianceUpdates) {
     TimingWindowProcessor proc(4, /*varianceThreshold*/ 0.5);

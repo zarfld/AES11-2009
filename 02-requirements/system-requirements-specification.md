@@ -405,7 +405,7 @@ Scenario: Grade mismatch warning
 
 Requirements for the 4 synchronization methods per AES-11-2009 Section 4.2.
 
-#### REQ-F-SYNC-001: DARS-Referenced Synchronization
+#### REQ-F-SYNC-001: DARS-Referenced Synchronization [Tests: TEST-DARS-STATE-001, TEST-SYNC-SELECT-001]
 
 - **Trace to**: StR-FUNC-001
 - **Related ADRs**: ADR-002, ADR-003, ADR-004
@@ -1439,7 +1439,7 @@ Scenario: Handle unsupported sample rate
 
 ---
 
-#### REQ-F-HAL-002: Timing Interface Abstraction
+#### REQ-F-HAL-002: Timing Interface Abstraction [Tests: TEST-TIMESRC-SNAPSHOT-001, TEST-TIMESRC-SNAPSHOT-002]
 
 - **Trace to**: StR-FUNC-002, StR-PERF-001
 - **Priority**: Critical (P0)
@@ -4484,7 +4484,7 @@ Scenario: Sustain 192 kHz sample rate for 24 hours
 
 ---
 
-#### REQ-NF-PERF-003: Timing Accuracy and Jitter
+#### REQ-NF-PERF-003: Timing Accuracy and Jitter [Tests: TEST-DM-TIMINGWIN-001, TEST-DM-TIMINGWIN-002]
 
 - **Trace to**: StR-PERF-002, StR-FUNC-001
 - **Priority**: Critical (P0)

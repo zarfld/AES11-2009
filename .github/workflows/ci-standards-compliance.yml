@@ -14,8 +14,8 @@ env:
   PYTHON_VERSION: "3.11"
   MIN_TEST_COVERAGE: 80
   MAX_CYCLOMATIC_COMPLEXITY: 10
-  # Temporarily relaxed while genuine REQ→(DES/ADR/TEST/QA/ARC) links are authored
-  MIN_REQ_LINKAGE_COVERAGE: 20
+  # Strict linkage targets (authentic, manually authored links only)
+  MIN_REQ_LINKAGE_COVERAGE: 90
 
 jobs:
   spec-validation:
@@ -223,9 +223,9 @@ jobs:
           # Enforce overall requirement linkage now; relax others until scenarios are modeled
           ALLOW_EMPTY_SPECS=1 python scripts/validate-trace-coverage.py \
             --min-req ${{ env.MIN_REQ_LINKAGE_COVERAGE }} \
-            --min-req-adr 0 \
-            --min-req-scenario 0 \
-            --min-req-test 0
+            --min-req-adr 70 \
+            --min-req-scenario 60 \
+            --min-req-test 40
 
   integrity-scan:
     name: Integrity Level Scan

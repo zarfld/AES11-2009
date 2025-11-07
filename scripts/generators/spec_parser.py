@@ -45,6 +45,8 @@ SCAN_DIRS = [
 # may appear. We parse these more leniently (no front matter expected) to enrich traceability.
 CODE_TEST_DIRS = [
     ROOT / '05-implementation' / 'tests',
+    ROOT / 'tests',                 # top-level tests (e.g., tests/cpp)
+    ROOT / '07-verification-validation',  # optional: scenario/test specs if present
 ]
 
 FRONT_MATTER_RE = re.compile(r'^---\n(.*?)\n---\n', re.DOTALL)
@@ -96,6 +98,9 @@ def parse_file(path: Path) -> List[Dict[str, Any]]:
         ids_in_line = [tok for tok in REF_PATTERN.findall(line)]
         for idx, id_ in enumerate(ids_in_line):
             if primary_id and id_ == primary_id:
+                continue
+            # Avoid defining TEST items from spec files; tests are authoritative in CODE_TEST_DIRS
+            if id_.startswith('TEST'):
                 continue
             if any(i['id'] == id_ for i in items):
                 continue

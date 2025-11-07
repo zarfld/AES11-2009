@@ -4,6 +4,7 @@
 using AES::AES11::_2009::sync::SynchronizationManager;
 using AES::AES11::_2009::sync::SourceMetrics;
 
+// Verifies: REQ-F-SYNC-001 (Source selection behavior under hysteresis for DARS-referenced sync)
 // TEST-SYNC-SELECT-001: Selection with hysteresis retains current when improvement < margin.
 TEST(SyncSelectionTests, SelectionAppliesHysteresis) {
     SynchronizationManager mgr(/*hysteresisMargin*/ 0.5);

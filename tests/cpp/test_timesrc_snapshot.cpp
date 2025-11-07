@@ -18,6 +18,7 @@ private:
     uint64_t tick_ = 0;
 };
 
+// Verifies: REQ-NF-REL-004 (Data integrity & consistency: monotonic, coherent snapshot fields)
 // TEST-TIMESRC-SNAPSHOT-001: Monotonic sequence ordering
 TEST(TimingSnapshotServiceTests, MonotonicSequenceIncrements) {
     MockClock clk;
