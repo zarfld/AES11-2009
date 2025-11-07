@@ -2,6 +2,7 @@ add_executable(aes11_tests
   test_timesrc_snapshot.cpp
   test_sync_selection.cpp
   test_timing_window_processor.cpp
+  test_dars_protocol.cpp
 )
 
 target_link_libraries(aes11_tests
