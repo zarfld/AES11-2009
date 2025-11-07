@@ -94,25 +94,21 @@ def parse_file(path: Path) -> List[Dict[str, Any]]:
         m = ID_PATTERN.match(line)
         if not m:
             continue
-        # Extract all valid IDs present in the line (comma separated etc.)
-        ids_in_line = [tok for tok in REF_PATTERN.findall(line)]
-        for idx, id_ in enumerate(ids_in_line):
-            if primary_id and id_ == primary_id:
-                continue
-            # Avoid defining TEST items from spec files; tests are authoritative in CODE_TEST_DIRS
-            if id_.startswith('TEST'):
-                continue
-            if any(i['id'] == id_ for i in items):
-                continue
-            # Title: remainder of line after this id if first, else just path stem
-            if idx == 0:
-                remainder = line.split(id_, 1)[1].strip(' -:,')
-                title = remainder or path.stem
-            else:
-                title = path.stem
-            # For inline-declared IDs, scope references to the current line only
-            # to avoid attributing file-global references to every item in the file.
-            items.append(build_item(id_, title, path, raw_line))
+        # Only treat the leading ID token as a definition on this line.
+        # Any additional IDs in the same line are references, not definitions.
+        head_id = m.group('id')
+        if primary_id and head_id == primary_id:
+            continue
+        # Avoid defining TEST items from spec files; tests are authoritative in CODE_TEST_DIRS
+        if head_id.startswith('TEST'):
+            continue
+        if any(i['id'] == head_id for i in items):
+            continue
+        remainder = line.split(head_id, 1)[1].strip(' -:,')
+        title = remainder or path.stem
+        # For inline-declared IDs, scope references to the current line only
+        # to avoid attributing file-global references to every item in the file.
+        items.append(build_item(head_id, title, path, raw_line))
     return items
 
 

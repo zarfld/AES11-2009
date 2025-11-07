@@ -2,13 +2,32 @@
 
 This document defines how Markdown specifications act as the authoritative software engineering artifacts while remaining compliant with ISO/IEC/IEEE standards (29148, 12207, 42010, 1016, 1012) using a spec-driven + AI-assisted workflow.
 
+## ID Numbering and Single-Definition Rule
+
+To keep traceability authentic and avoid duplicate identifier warnings:
+
+- Each artifact (Requirement, ADR, Design, Test, Scenario) MUST have a single authoritative definition.
+- For documents with YAML front matter, the `id:` in front matter is the sole definition of that artifact.
+- Inline IDs appearing in headings or brackets (e.g., "[Design: DES-FOO]") are treated as references only.
+- Requirement headings that begin with an ID (e.g., `#### REQ-...`) define that requirement; any other IDs in the same heading line are references.
+- Tests are defined in source files (e.g., `tests/**`) and linked via comments (e.g., `// Verifies: REQ-...`). Do not define TEST-* IDs in spec markdown.
+
+Formatting guidance:
+
+- Use forward link annotations in square brackets for references, e.g., `[Design: DES-XYZ] [Tests: TEST-ABC-001, TEST-ABC-002]`.
+- Do not repeat the artifact ID as part of the document title (avoid H1 like `# ... (DES-XYZ)`).
+
+These rules are enforced by the spec parser: it defines only the leading ID token on a heading line, and treats other IDs as references to prevent duplicates.
+
 ## Objectives
+
 - Treat Markdown specs as primary source-of-truth (no divergent Word/PDF copies)
 - Preserve required information items & traceability demanded by standards
 - Enable continuous evolution with version control & review independence
 - Provide auditable evidence for verification & validation
 
 ## Standards Mapping
+
 | Standard | Required Content / Process | Governance Mechanism |
 |----------|---------------------------|----------------------|
 | ISO/IEC/IEEE 29148:2018 | Stakeholder needs, requirement attributes (ID, rationale, priority, verification method) | Requirements spec YAML front matter + REQ sections with structured fields |
@@ -18,7 +37,8 @@ This document defines how Markdown specifications act as the authoritative softw
 | IEEE 1012-2016 | V&V planning, independence, evidence | Review checklist, acceptance tests, traceability matrix, reviewer role separation |
 
 ## Authoritative Artifact Model
-```
+
+```text
 Markdown Spec (Requirements / Architecture / Design)
   ↓ (AI compile prompts)
 Code + Tests + Docs
@@ -27,38 +47,42 @@ Verification Evidence (test results, coverage, reviews)
 ```
 
 ## Mandatory YAML Front Matter Fields
+
 | Field | Applies To | Purpose |
 |-------|------------|---------|
 | specType | all | Classification for schema selection |
 | version | all | Configuration control (semantic) |
-| status | all | draft | review | approved lifecycle |
+| status | all | lifecycle state (draft, review, approved) |
 | author | all | Accountability |
 | date | all | Change tracking baseline |
 | traceability.requirements / stakeholderRequirements | architecture/design | Upstream linkage |
 | integrityLevel (optional) | safety/security sensitive | Drives independence requirements |
 
 ## Traceability Chain Enforcement
-```
+
+```text
 Stakeholder Requirement (StR-*)
-  → System / Software Requirement (REQ-*)
-    → Architecture Component / Pattern (ARC-C-*, ARC-P-*)
-      → Design Element (DES-*)
-        → Implementation Artifact (SRC-*, path)
-          → Test Case (TEST-*)
+  → System / Software Requirement (REQ-\*)
+    → Architecture Component / Pattern (ARC-C-\*, ARC-P-\*)
+      → Design Element (DES-\*)
+        → Implementation Artifact (SRC-\*, path)
+          → Test Case (TEST-\*)
             → Evidence (Test Result / Coverage / Report)
 ```
 
 ### Traceability Rules
+
 | Rule | Description | Enforcement |
 |------|-------------|-------------|
-| R1 | Every REQ-* must have at least one acceptance criterion | Spec schema & lint script |
-| R2 | Every REQ-* must map to ≥1 ARC-C-* OR ADR-* | Traceability matrix CI check |
-| R3 | Every ADR-* must reference ≥1 REQ-* OR QA-SC-* | ADR template validation |
-| R4 | Every QA-SC-* must reference ≥1 REQ-NF-* | Scenario template validation |
-| R5 | Every TEST-* references ≥1 REQ-* OR QA-SC-* | Test scaffolding generator |
-| R6 | No orphan components (ARC-C-*) | Matrix orphan scan |
+| R1 | Every REQ-\* must have at least one acceptance criterion | Spec schema & lint script |
+| R2 | Every REQ-\* must map to ≥1 ARC-C-\* OR ADR-\* | Traceability matrix CI check |
+| R3 | Every ADR-\* must reference ≥1 REQ-\* OR QA-SC-\* | ADR template validation |
+| R4 | Every QA-SC-\* must reference ≥1 REQ-NF-\* | Scenario template validation |
+| R5 | Every TEST-\* references ≥1 REQ-\* OR QA-SC-\* | Test scaffolding generator |
+| R6 | No orphan components (ARC-C-\*) | Matrix orphan scan |
 
 ## Review & Approval Workflow
+
 | Stage | Action | Independence Requirement |
 |-------|--------|--------------------------|
 | Authoring | Spec created/updated | N/A |
@@ -69,14 +93,17 @@ Stakeholder Requirement (StR-*)
 | Post-Merge | CI evidence archived | Automated |
 
 ### CODEOWNERS (Recommended)
+
 Example (not yet added):
-```
+
+```text
 03-architecture/ @architect-team
 02-requirements/ @product-owner @requirements-analysts
 spec-kit-templates/ @architecture-governance
 ```
 
 ## Integrity Levels (Simplified)
+
 | Level | Description | Additional Controls |
 |-------|-------------|---------------------|
 | 1 | Low impact | Standard workflow |
@@ -87,6 +114,7 @@ spec-kit-templates/ @architecture-governance
 Add `integrityLevel` in YAML to escalate required gates.
 
 ## Evidence Capture
+
 | Evidence Type | Source | Location |
 |---------------|--------|----------|
 | Test Results | CI (unit, integration, acceptance) | Artifacts / `07-verification-validation/test-results/` |
@@ -96,18 +124,20 @@ Add `integrityLevel` in YAML to escalate required gates.
 | Traceability Matrix | Generated script | `07-verification-validation/traceability/` |
 
 ## Automation Components (Planned / Current)
+
 | Component | Status | Purpose |
 |-----------|--------|---------|
 | Spec Schema Validation | Implemented | Enforce mandatory YAML keys |
 | Spec Index Generation (spec_parser) | Implemented | Canonical inventory of governed IDs & refs |
 | Traceability Matrix Script | Implemented | Build JSON → Markdown matrix |
 | Traceability JSON (build_trace_json) | Implemented | Machine-readable forward/back links + metrics |
-| Requirement Test Skeleton Generator | Implemented | Ensure every REQ-* has at least placeholder test |
+| Requirement Test Skeleton Generator | Implemented | Ensure every REQ-\* has at least placeholder test |
 | Orphan Detector | Implemented (trace scripts) | Fail build on orphaned IDs |
 | Integrity Level Gate | Planned | Dynamic job matrix (extra checks) |
 | Evidence Bundler | Planned | Collect & zip compliance artifacts |
 
 ## Governance Anti-Patterns
+
 | Anti-Pattern | Risk | Mitigation |
 |-------------|------|-----------|
 | Free-form specs (missing IDs) | Lost traceability | Schema validation |
@@ -116,7 +146,9 @@ Add `integrityLevel` in YAML to escalate required gates.
 | Ambiguous quality attributes ("fast", "secure") | Non-testable NFRs | Scenario template with metrics |
 
 ## PR Checklist (Suggested)
+
 Add to PR template:
+
 - [ ] Spec updated (or N/A)
 - [ ] Traceability matrix regenerated
 - [ ] New/changed requirements have acceptance criteria
@@ -140,7 +172,7 @@ The CI job `spec-generation` (after `spec-validation`) performs deterministic ge
 
 1. `build/spec-index.json` – authoritative list of all governed IDs (requirements, architecture, ADRs, QA scenarios, tests) with references.
 2. `build/traceability.json` – forward/backward link graph + coverage metrics by ID prefix.
-3. `05-implementation/tests/generated/` placeholder requirement test skeletons for any REQ-* lacking explicit tests.
+3. `05-implementation/tests/generated/` placeholder requirement test skeletons for any REQ-\* lacking explicit tests.
 
 ### Guarantees
 
@@ -160,19 +192,18 @@ The CI job `spec-generation` (after `spec-validation`) performs deterministic ge
 
 Developers can run:
 
-```bash
+```powershell
 python scripts/generators/spec_parser.py
 python scripts/generators/build_trace_json.py
 python scripts/generators/gen_tests.py
 ```
-
-to preview artifacts prior to opening a PR.
 
 ### Traceability Coverage Metrics
 
 `traceability.json` includes per-prefix coverage allowing dashboards to highlight unlinked items (e.g., REQ without design refs). Threshold-based gating can be added later (e.g., enforce ≥90% REQ linkage).
 
 ## References
+
 - ISO/IEC/IEEE 29148:2018 (Requirements)
 - ISO/IEC/IEEE 42010:2011 (Architecture Description)
 - IEEE 1016-2009 (Design Descriptions)
@@ -181,4 +212,5 @@ to preview artifacts prior to opening a PR.
 - ATAM / SAAM (Scenario-based architecture evaluation)
 
 ---
+
 **Core Principle**: The spec is the system. Code is a compilation artifact; tests and evidence continuously validate spec fidelity.

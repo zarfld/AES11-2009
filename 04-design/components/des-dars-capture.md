@@ -9,7 +9,7 @@ implements:
   - REQ-F-DARS-002
 ---
 
-# DARS Capture Range Component (DES-DARS-CAPTURE)
+# DARS Capture Range Component
 
 ## Purpose
 
