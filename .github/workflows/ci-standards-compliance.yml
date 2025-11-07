@@ -248,6 +248,75 @@ jobs:
           name: integrity-scan
           path: build/integrity-scan.json
 
+  # Phase 06: Integration Testing
+  integration-tests:
+    name: Integration Tests (XP - Continuous Integration)
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: ${{ hashFiles('package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        if: ${{ hashFiles('package.json') != '' }}
+        run: npm ci
+
+      - name: Run database migrations
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          echo "🗄️ Running database migrations..."
+          npm run db:migrate
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/test_db
+
+      - name: Run integration tests
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          echo "🔗 Running integration tests..."
+          npm run test:integration
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: test-results/integration/
+
   # Phase 02: Requirements Traceability Check
   requirements-traceability:
     needs: [spec-validation]
@@ -291,6 +360,63 @@ jobs:
         with:
           name: traceability-matrix
           path: reports/traceability-matrix.md
+
+  # Phase 07: Verification & Validation (IEEE 1012)
+  acceptance-tests:
+    name: Acceptance Tests (XP - Customer Tests, IEEE 1012)
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: ${{ hashFiles('package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        if: ${{ hashFiles('package.json') != '' }}
+        run: npm ci
+
+      - name: Install Playwright
+        if: ${{ hashFiles('package.json') != '' }}
+        run: npx playwright install --with-deps
+
+      - name: Build application
+        if: ${{ hashFiles('package.json') != '' }}
+        run: npm run build
+
+      - name: Start application
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          npm run start &
+          echo $! > .app.pid
+          # Wait for app to start
+          npx wait-on http://localhost:3000 -t 60000
+
+      - name: Run acceptance tests (BDD)
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          echo "🎭 Running acceptance tests (Behavior-Driven Development)..."
+          npm run test:acceptance
+
+      - name: Stop application
+        if: always()
+        run: |
+          kill $(cat .app.pid) || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-test-results
+          path: |
+            test-results/acceptance/
+            playwright-report/
 
   # Phase 07: Verification & Validation (IEEE 1012)
 
@@ -389,7 +515,9 @@ jobs:
         code-quality,
         cxx-implementation,
         unit-tests,
+        integration-tests,
         requirements-traceability,
+        acceptance-tests,
         architecture-validation,
         security-scan,
       ]
@@ -450,8 +578,8 @@ jobs:
           ## IEEE 1012-2016 - Verification and Validation
 
           - ✅ Unit tests: ${{ needs['unit-tests'].result }}
-          - ✅ Integration tests: N/A (C/C++ only project scope)
-          - ✅ Acceptance tests: N/A (C/C++ only project scope)
+          - ✅ Integration tests: ${{ needs['integration-tests'].result }}
+          - ✅ Acceptance tests: ${{ needs['acceptance-tests'].result }}
           - ✅ Test coverage: >=${{ env.MIN_TEST_COVERAGE }}%
 
           ## XP Practices Compliance
@@ -480,13 +608,13 @@ jobs:
           - Code Quality: ${{ needs['code-quality'].result }}
           - Unit Tests: ${{ needs['unit-tests'].result }}
           - C++ Implementation Tests: ${{ needs['cxx-implementation'].result }}
-          - Integration Tests: N/A
-          - Acceptance Tests: N/A
+          - Integration Tests: ${{ needs['integration-tests'].result }}
+          - Acceptance Tests: ${{ needs['acceptance-tests'].result }}
           - Architecture: ${{ needs['architecture-validation'].result }}
           - Security: ${{ needs['security-scan'].result }}
           - Traceability: ${{ needs['requirements-traceability'].result }}
 
-          **Build Status**: ${{ needs['code-quality'].result == 'success' && needs['unit-tests'].result == 'success' && '✅ PASSED' || '❌ FAILED' }}
+          **Build Status**: ${{ needs['code-quality'].result == 'success' && needs['unit-tests'].result == 'success' && needs['integration-tests'].result == 'success' && needs['acceptance-tests'].result == 'success' && '✅ PASSED' || '❌ FAILED' }}
           EOF
 
           cat compliance-report.md
