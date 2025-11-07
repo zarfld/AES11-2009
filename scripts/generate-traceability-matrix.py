@@ -42,6 +42,10 @@ PATTERNS = {
     'scenario': re.compile(r'QA-SC-(?:[A-Z]{4}-)??\d{3}'),
     # TEST-AUTH-LOGIN-001 or TEST-LOGIN-001 (flexible: alphanumeric + dash)
     'test': re.compile(r'TEST-(?:[A-Z]{4}-)?[A-Z0-9-]+'),
+    # Design IDs
+    'design_component': re.compile(r'DES-C-\d{3}'),
+    'design_interface': re.compile(r'DES-I-\d{3}'),
+    'design_data': re.compile(r'DES-D-\d{3}'),
 }
 
 def is_guidance(path: pathlib.Path, text: str) -> bool:
@@ -81,6 +85,7 @@ def is_guidance(path: pathlib.Path, text: str) -> bool:
     return False
 
 files = []
+front_matter_meta: dict[pathlib.Path, dict] = {}
 for p in ROOT.rglob('*.md'):
     if 'node_modules' in p.parts or 'reports' in p.parts:
         continue
@@ -90,6 +95,15 @@ for p in ROOT.rglob('*.md'):
         continue
     if is_guidance(p, txt):
         continue
+    # capture YAML front matter (if present) for stronger linkage
+    if txt.startswith('---'):
+        try:
+            fm = txt.split('---', 2)[1]
+            meta = yaml.safe_load(fm) or {}
+            if isinstance(meta, dict):
+                front_matter_meta[p] = meta
+        except Exception:
+            pass
     files.append(p)
 index: dict[str, set[str]] = {k: set() for k in PATTERNS}
 occurrence: dict[str, dict[str, set[pathlib.Path]]] = {k: defaultdict(set) for k in PATTERNS}
@@ -137,6 +151,36 @@ for test in index['test']:
             continue
         for req in PATTERNS['requirement'].findall(t):
             req_links[req].add(test)
+
+# Link design specs to requirements by co-occurrence in same file
+for design_key in ('design_component', 'design_interface', 'design_data'):
+    for des in index[design_key]:
+        for p in occurrence[design_key][des]:
+            try:
+                t = p.read_text(encoding='utf-8', errors='ignore')
+            except Exception:
+                continue
+            for req in PATTERNS['requirement'].findall(t):
+                req_links[req].add(des)
+
+# Link using YAML front matter if available: use document id -> relatedRequirements
+for p, meta in front_matter_meta.items():
+    doc_id = str(meta.get('id') or '').strip()
+    if not doc_id:
+        continue
+    # check if doc_id matches a known pattern we index
+    matched_key = None
+    for key, pat in PATTERNS.items():
+        if key == 'requirement':
+            continue
+        if pat.fullmatch(doc_id):
+            matched_key = key
+            break
+    rel = meta.get('relatedRequirements') or []
+    if matched_key and isinstance(rel, (list, tuple)):
+        for req in rel:
+            if isinstance(req, str) and PATTERNS['requirement'].fullmatch(req.strip()):
+                req_links[req.strip()].add(doc_id)
 
 # Orphan detection
 orphans = {
@@ -215,7 +259,7 @@ for section_title, pattern in sections:
         continue
     matrix_lines.append(f'## {section_title}')
     matrix_lines.append('')
-    matrix_lines.append('| Requirement | Linked Elements (ADR / Component / Scenario / Test) |')
+    matrix_lines.append('| Requirement | Linked Elements (ADR / Architecture / Design / Scenario / Test) |')
     matrix_lines.append('|-------------|----------------------------------------------------|')
     for req in section_reqs:
         linked = ', '.join(sorted(req_links.get(req, []))) or '(none)'
