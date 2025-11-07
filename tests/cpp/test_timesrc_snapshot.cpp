@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 #include "../../lib/Standards/AES/AES11/2009/core/timing_snapshot_service.hpp"
 #include <chrono>
+#include <thread>
+#include <vector>
+#include <atomic>
+#include <algorithm>
 
 // Simple mock clock providing deterministic monotonic behavior
 class MockClock : public Common::interfaces::ClockInterface {
@@ -50,4 +54,41 @@ TEST(TimingSnapshotServiceTests, SequenceGrowthNoWrapInRange) {
         ASSERT_GT(s.seq, lastSeq);
         lastSeq = s.seq;
     }
+}
+
+// Concurrency: snapshot sequence values should be unique across threads
+TEST(TimingSnapshotServiceTests, ConcurrentSnapshotsYieldUniqueSequences) {
+    class ThreadClock : public Common::interfaces::ClockInterface {
+    public:
+        uint64_t get_tick() override { return ++tick_; }
+        uint64_t get_time_ns() override { return ++time_ns_; }
+    private:
+        std::atomic<uint64_t> tick_{0};
+        std::atomic<uint64_t> time_ns_{0};
+    };
+
+    ThreadClock clk;
+    AES::AES11::_2009::core::TimingSnapshotService svc(clk);
+
+    constexpr int threads = 4;
+    constexpr int perThread = 100;
+    std::vector<uint64_t> seqs;
+    seqs.reserve(threads * perThread);
+    std::mutex m;
+
+    auto worker = [&]() {
+        for (int i = 0; i < perThread; ++i) {
+            auto s = svc.snapshot();
+            std::lock_guard<std::mutex> lg(m);
+            seqs.push_back(s.seq);
+        }
+    };
+
+    std::vector<std::thread> ts;
+    for (int i = 0; i < threads; ++i) ts.emplace_back(worker);
+    for (auto& t : ts) t.join();
+
+    std::sort(seqs.begin(), seqs.end());
+    seqs.erase(std::unique(seqs.begin(), seqs.end()), seqs.end());
+    EXPECT_EQ(seqs.size(), static_cast<size_t>(threads * perThread));
 }

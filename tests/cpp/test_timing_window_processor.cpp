@@ -77,3 +77,31 @@ TEST(TimingWindowProcessorTests, ClearResetsAggregates) {
     EXPECT_NEAR(m.variance, 0.0, 1e-12);
 }
 
+// Boundary: variance equal to threshold should be considered NOT stable (strict < used)
+TEST(TimingWindowProcessorTests, VarianceEqualThresholdNotStable) {
+    TimingWindowProcessor proc(4, /*varianceThreshold*/ 1.25);
+    // Populate with [1,2,3,4] -> variance = 1.25 exactly
+    proc.addSample(1.0);
+    proc.addSample(2.0);
+    proc.addSample(3.0);
+    proc.addSample(4.0);
+    auto m = proc.metrics();
+    EXPECT_NEAR(m.variance, 1.25, 1e-9);
+    EXPECT_FALSE(m.stable) << "Equality should not be marked stable (uses < threshold)";
+}
+
+// Robustness: negative and large values do not break mean/variance computation
+TEST(TimingWindowProcessorTests, HandlesNegativeAndLargeValues) {
+    TimingWindowProcessor proc(5, /*varianceThreshold*/ 1e12);
+    proc.addSample(-1e6);
+    proc.addSample(0.0);
+    proc.addSample(1e6);
+    proc.addSample(5.0);
+    proc.addSample(-5.0);
+    auto m = proc.metrics();
+    EXPECT_EQ(m.count, 5u);
+    // Basic sanity checks
+    EXPECT_TRUE(std::isfinite(m.mean));
+    EXPECT_TRUE(std::isfinite(m.variance));
+}
+

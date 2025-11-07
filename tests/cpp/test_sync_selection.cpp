@@ -80,4 +80,36 @@ TEST(SyncSelectionTests, AllSourcesDegradedSelectsHighestScore) {
     EXPECT_EQ(sel, 2u);
 }
 
+// Boundary: If improvement equals hysteresis margin, retain current
+TEST(SyncSelectionTests, ImprovementEqualsMarginRetainsCurrent) {
+    SynchronizationManager mgr(0.20);
+    std::vector<SourceMetrics> sources = {
+        {0.10, 5.00, false}, // score 4.90 (index 0)
+        {0.10, 5.05, false}, // score 4.95 (index 1 best initially)
+    };
+    size_t first = mgr.select(sources);
+    ASSERT_EQ(first, 1u);
+    // Improve source 0 so delta(best - current) == 0.20 (equal margin)
+    // currentScore = 4.95 (idx1); make idx0 score = 5.15 to exceed? We want best improvement exactly 0.20
+    // Set quality to 5.25: score0 = 5.25 - 0.10 = 5.15; delta = 5.15 - 4.95 = 0.20
+    sources[0].quality = 5.25;
+    size_t second = mgr.select(sources);
+    EXPECT_EQ(second, 1u) << "Equal to margin should retain current";
+}
+
+// Switch when improvement strictly greater than margin
+TEST(SyncSelectionTests, ImprovementGreaterThanMarginSwitches) {
+    SynchronizationManager mgr(0.20);
+    std::vector<SourceMetrics> sources = {
+        {0.10, 5.00, false}, // 4.90
+        {0.10, 5.05, false}, // 4.95 (current)
+    };
+    size_t first = mgr.select(sources);
+    ASSERT_EQ(first, 1u);
+    // Make index 0 better by > margin
+    sources[0].quality = 5.30; // score0 = 5.20; delta = 0.25 > 0.20
+    size_t second = mgr.select(sources);
+    EXPECT_EQ(second, 0u);
+}
+
 

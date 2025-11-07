@@ -40,3 +40,20 @@ TEST(DARSProtocolTests, FrameValidIgnoredInIdle) {
     EXPECT_EQ(proto.state(), DARSState::Idle);
 }
 
+// Event: BeginAcquire should transition Idle -> Acquire via handleEvent
+TEST(DARSProtocolTests, BeginAcquireEventTransitionsToAcquire) {
+    DARSProtocol proto;
+    ASSERT_EQ(proto.state(), DARSState::Idle);
+    proto.handleEvent(DARSEvent::BeginAcquire);
+    EXPECT_EQ(proto.state(), DARSState::Acquire);
+}
+
+// In Acquire, FrameInvalid should not force Error; it should keep acquiring (current behavior)
+TEST(DARSProtocolTests, FrameInvalidKeepsAcquireState) {
+    DARSProtocol proto;
+    ASSERT_TRUE(proto.requestAcquire());
+    ASSERT_EQ(proto.state(), DARSState::Acquire);
+    proto.handleEvent(DARSEvent::FrameInvalid);
+    EXPECT_EQ(proto.state(), DARSState::Acquire);
+}
+
