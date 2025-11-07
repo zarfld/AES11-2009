@@ -12,6 +12,7 @@ add_library(aes11_standards STATIC
     lib/Standards/AES/AES11/2009/core/timing_snapshot_service.cpp
   lib/Standards/AES/AES11/2009/core/timing_window_processor.cpp
   lib/Standards/AES/AES11/2009/core/dars_protocol.cpp
+  lib/Standards/AES/AES11/2009/sync/synchronization_manager.cpp
 )
 
 target_include_directories(aes11_standards PUBLIC
