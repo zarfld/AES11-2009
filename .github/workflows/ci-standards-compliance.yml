@@ -507,6 +507,53 @@ jobs:
           name: trivy-results-sarif
           path: trivy-results.sarif
 
+  # Deployment (Phase 08) - only on develop branch push
+  deploy-staging:
+    name: Deploy to Staging (Phase 08 - Transition)
+    runs-on: ubuntu-latest
+    needs:
+      [
+        code-quality,
+        unit-tests,
+        integration-tests,
+        acceptance-tests,
+        security-scan,
+      ]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    # Environment metadata omitted until deployment credentials configured
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Build application
+        run: |
+          echo "🏗️ Building application..."
+          npm ci
+          npm run build
+
+      - name: Deploy to staging
+        run: |
+          echo "🚀 Deploying to staging environment..."
+          # Add your deployment commands here
+          # e.g., aws, gcloud, kubectl, etc.
+
+      - name: Run smoke tests
+        run: |
+          echo "💨 Running smoke tests..."
+          npm run test:smoke -- --env=staging
+
+      - name: Notify deployment
+        if: always()
+        run: |
+          echo "📢 Deployment to staging: ${{ job.status }}"
+          # Add notification logic (Slack, email, etc.)
+
   # Standards Compliance Report
   compliance-report:
     needs:
