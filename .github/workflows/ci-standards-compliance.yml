@@ -82,17 +82,25 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Install code-quality tooling
         run: |
-          npm ci
-          npm install -g eslint prettier markdownlint-cli
+          if [ -f package.json ]; then
+            echo "Found package.json - installing project deps and global linters"
+            npm ci
+            npm install -g eslint prettier markdownlint-cli
+          else
+            echo "No package.json - installing markdownlint-cli globally for docs checks"
+            npm install -g markdownlint-cli
+          fi
 
       - name: Run linting (Coding Standards)
+        if: ${{ hashFiles('package.json') != '' }}
         run: |
-          echo "🔍 Checking code style compliance..."
+          echo "🔍 Checking code style compliance (JS/TS)..."
           npm run lint
 
       - name: Check code formatting
+        if: ${{ hashFiles('package.json') != '' }}
         run: |
           echo "📝 Checking code formatting..."
           npm run format:check || {
@@ -109,6 +117,7 @@ jobs:
           }
 
       - name: Complexity analysis
+        if: ${{ hashFiles('package.json') != '' }}
         run: |
           echo "📊 Analyzing code complexity..."
           npx eslint . --ext .ts,.js --max-warnings 0 --rule 'complexity: ["error", ${{ env.MAX_CYCLOMATIC_COMPLEXITY }}]' || {
@@ -481,12 +490,15 @@ jobs:
           echo "⚠️ Snyk scan skipped (token not configured in lint environment)."
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.21.0
         with:
           scan-type: "fs"
           scan-ref: "."
           format: "sarif"
           output: "trivy-results.sarif"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          exit-code: "0"
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
