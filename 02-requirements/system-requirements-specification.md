@@ -475,7 +475,563 @@ Scenario: Handle DARS frequency outside capture range
 
 ---
 
-*[Phase 02 System Requirements Specification continues with 60+ detailed requirements across all functional areas. This is the beginning of comprehensive requirements transformation from stakeholder to system level.]*
+#### REQ-F-DARS-003: Capture Range Support
+
+- **Trace to**: StR-PERF-002, StR-FUNC-001
+- **Priority**: Critical (P0)
+- **AES-11 Reference**: Section 5.2.2
+
+**Description**: The system shall lock internal oscillators to external DARS inputs within specified capture ranges: ±2 ppm for Grade 1 equipment, ±50 ppm for Grade 2 equipment.
+
+**Rationale**: AES-11-2009 Section 5.2.2 defines minimum capture ranges ensuring equipment can lock to reference signals despite manufacturing tolerances and environmental variations.
+
+**Functional Behavior**:
+1. System shall detect external DARS frequency within measurement precision of ±0.01 ppm
+2. When configured as Grade 1, system shall lock to DARS within ±2 ppm of nominal frequency
+3. When configured as Grade 2, system shall lock to DARS within ±50 ppm of nominal frequency
+4. System shall acquire lock within 2 seconds when frequency is within capture range
+5. System shall reject DARS exceeding capture range and remain in free-running mode
+6. System shall measure actual capture range via diagnostic API for verification
+7. System shall support capture range testing mode for conformance validation
+
+**Boundary Values**:
+- **Grade 1 Capture Range**: ±2 ppm
+  - At 48 kHz: 47.9999040 Hz to 48.0000960 Hz (±0.096 Hz)
+  - At 44.1 kHz: 44.0999118 Hz to 44.1000882 Hz (±0.0882 Hz)
+- **Grade 2 Capture Range**: ±50 ppm
+  - At 48 kHz: 47.9976 Hz to 48.0024 Hz (±2.4 Hz)
+  - At 44.1 kHz: 44.09779 Hz to 44.10221 Hz (±2.205 Hz)
+- **Lock Acquisition Time**: <2 seconds (target 1 second typical)
+- **Frequency Measurement Precision**: ±0.01 ppm minimum
+
+**Error Handling**:
+| Error Condition | System Action | User Notification | Log Level |
+|----------------|---------------|-------------------|-----------|
+| DARS frequency outside capture range | Reject DARS, free-running mode | `SYNC_ERROR_OUTSIDE_CAPTURE_RANGE` | ERROR |
+| Lock acquisition timeout | Enter UNLOCKED state | `SYNC_ERROR_LOCK_TIMEOUT` | ERROR |
+| Frequency measurement uncertainty high | Log warning, continue attempt | `SYNC_WARNING_MEASUREMENT_UNCERTAINTY` | WARNING |
+| Multiple lock/unlock cycles | Enter error state after 5 cycles | `SYNC_ERROR_UNSTABLE_LOCK` | CRITICAL |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Grade 1 equipment locks to DARS within ±2 ppm
+  Given Grade 1 equipment with 48 kHz nominal frequency
+  And external DARS at 48.00008 Hz (+1.67 ppm, within ±2 ppm)
+  When system attempts lock acquisition
+  Then system shall achieve LOCKED state within 2 seconds
+  And frequency_error_ppm API shall report +1.67 ppm
+  And lock_status shall return LOCKED
+
+Scenario: Grade 1 equipment rejects DARS outside ±2 ppm
+  Given Grade 1 equipment with 48 kHz nominal frequency
+  And external DARS at 48.00015 Hz (+3.125 ppm, exceeds ±2 ppm)
+  When system attempts lock acquisition
+  Then system shall reject DARS
+  And system shall log ERROR `SYNC_ERROR_OUTSIDE_CAPTURE_RANGE`
+  And lock_status shall return UNLOCKED
+  And system shall remain in free-running mode
+
+Scenario: Grade 2 equipment locks to DARS within ±50 ppm
+  Given Grade 2 equipment with 48 kHz nominal frequency
+  And external DARS at 48.002 Hz (+41.67 ppm, within ±50 ppm)
+  When system attempts lock acquisition
+  Then system shall achieve LOCKED state within 2 seconds
+  And frequency_error_ppm API shall report +41.67 ppm
+  And lock_status shall return LOCKED
+
+Scenario: Lock acquisition time measurement
+  Given system in UNLOCKED state
+  And external DARS within capture range
+  And timestamp T0 when lock acquisition begins
+  When system initiates synchronization
+  Then system shall achieve LOCKED state at timestamp T1
+  And (T1 - T0) shall be <2000 milliseconds
+  And lock_acquisition_time_ms API shall report actual time
+```
+
+**Dependencies**:
+- **Internal**: REQ-F-DARS-001 (DARS format), REQ-F-DARS-002 (frequency accuracy), REQ-F-HAL-002 (timing interface)
+- **External**: High-precision frequency measurement capability via HAL
+
+**Verification Method**:
+- Frequency offset testing with calibrated signal generator
+- Lock acquisition timing measurement with microsecond precision
+- Boundary testing at ±1.9 ppm, ±2.1 ppm (Grade 1) and ±49 ppm, ±51 ppm (Grade 2)
+- Conformance test automation
+
+---
+
+#### REQ-F-DARS-004: Phase Relationship Tolerances
+
+- **Trace to**: StR-PERF-003, StR-FUNC-001
+- **Priority**: Critical (P0)
+- **AES-11 Reference**: Section 5.3.1, Table 2
+
+**Description**: The system shall maintain timing reference point (TRP) phase relationships within specified tolerances: outputs ±5% of AES3 frame period, inputs ±25% of AES3 frame period.
+
+**Rationale**: AES-11-2009 Section 5.3.1 defines phase tolerances ensuring equipment synchronization without sample slips, while Table 2 quantifies exact microsecond limits for each sampling frequency.
+
+**Functional Behavior**:
+1. System shall measure TRP phase offset between DARS input and all output signals
+2. System shall maintain output TRP phase within ±5% (±18°) of DARS TRP at equipment connectors
+3. System shall accept input signals with TRP phase within ±25% (±90°) of DARS TRP without sample slips
+4. System shall introduce known constant device delay (document in microseconds or frame periods)
+5. System shall provide phase offset measurement via diagnostic API (in microseconds and degrees)
+6. System shall trigger phase realignment when offset exceeds ±4.5% (warning threshold)
+7. System shall count and report phase violation events for monitoring
+
+**Boundary Values** (from AES-11 Table 2):
+- **32 kHz Sampling**:
+  - Frame period: 31.25 µs (1/32000)
+  - Output tolerance: ±1.6 µs (±5% = ±18°)
+  - Input tolerance: ±7.8 µs (±25% = ±90°)
+- **44.1 kHz Sampling**:
+  - Frame period: 22.68 µs (1/44100)
+  - Output tolerance: ±1.1 µs (±5% = ±18°)
+  - Input tolerance: ±5.7 µs (±25% = ±90°)
+- **48 kHz Sampling**:
+  - Frame period: 20.83 µs (1/48000)
+  - Output tolerance: ±1.0 µs (±5% = ±18°)
+  - Input tolerance: ±5.2 µs (±25% = ±90°)
+- **96 kHz Sampling** (double-rate):
+  - Frame period: 10.41 µs (1/96000)
+  - Output tolerance: ±0.5 µs (±5% = ±18°)
+  - Input tolerance: ±2.6 µs (±25% = ±90°)
+
+**Error Handling**:
+| Error Condition | System Action | User Notification | Log Level |
+|----------------|---------------|-------------------|-----------|
+| Output phase exceeds ±5% | Trigger realignment, count violation | `SYNC_WARNING_OUTPUT_PHASE_VIOLATION` | WARNING |
+| Input phase exceeds ±25% | Accept with hysteresis, log event | `SYNC_INFO_INPUT_PHASE_LIMIT` | INFO |
+| Phase measurement failure | Use last known value, flag uncertainty | `SYNC_ERROR_PHASE_MEASUREMENT_FAIL` | ERROR |
+| Realignment failure after 3 attempts | Enter error state, require restart | `SYNC_ERROR_REALIGNMENT_FAIL` | CRITICAL |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Maintain output phase within ±5% at 48 kHz
+  Given system locked to DARS at 48 kHz
+  And DARS TRP at reference time T0
+  When system generates output signal TRP at time T1
+  Then |T1 - T0| shall be ≤1.0 µs (±5% of 20.83 µs frame)
+  And phase_offset_us API shall report actual offset
+  And phase_offset_degrees API shall report ±18° maximum
+
+Scenario: Accept input signal with phase within ±25% at 48 kHz
+  Given system locked to DARS at 48 kHz
+  And input signal TRP offset by +5.0 µs from DARS TRP
+  And +5.0 µs is within ±5.2 µs tolerance (±25%)
+  When system receives input signal
+  Then system shall accept signal without sample slip
+  And device_delay_samples API shall report constant delay
+  And no phase violation events shall be logged
+
+Scenario: Handle output phase violation and realignment
+  Given system locked to DARS
+  And output phase drifts to +1.2 µs at 48 kHz (exceeds ±1.0 µs)
+  When system detects phase violation
+  Then system shall log WARNING `SYNC_WARNING_OUTPUT_PHASE_VIOLATION`
+  And system shall trigger phase realignment
+  And system shall achieve ≤1.0 µs phase offset within 1 second
+  And phase_violation_count shall increment
+
+Scenario: Phase measurement across sampling frequencies
+  Given system supports 32/44.1/48/96 kHz sampling
+  When system measures phase at each frequency
+  Then tolerance at 32 kHz shall be ±1.6 µs output, ±7.8 µs input
+  And tolerance at 44.1 kHz shall be ±1.1 µs output, ±5.7 µs input
+  And tolerance at 48 kHz shall be ±1.0 µs output, ±5.2 µs input
+  And tolerance at 96 kHz shall be ±0.5 µs output, ±2.6 µs input
+  And phase measurement precision shall be ≤0.1 µs
+```
+
+**Dependencies**:
+- **Internal**: REQ-F-DARS-001 (TRP extraction), REQ-F-HAL-002 (microsecond timing), REQ-NF-PERF-001 (timing precision)
+- **External**: AES3-2009 for preamble timing definitions
+
+**Verification Method**:
+- Dual-channel oscilloscope measurement of TRP timing
+- Phase offset sweep testing across full ±25% input range
+- Automated phase violation detection and logging verification
+- Cross-frequency validation (32/44.1/48/96 kHz)
+
+---
+
+#### REQ-F-DARS-005: Video-Referenced Synchronization
+
+- **Trace to**: StR-FUNC-001
+- **Priority**: High (P1)
+- **AES-11 Reference**: Section 4.2.3, 4.5, 5.3.4
+
+**Description**: The system shall support video-referenced synchronization where DARS is derived from video reference signal, aligning DARS TRP to half-amplitude point of video sync pulse leading edge with ±5% tolerance.
+
+**Rationale**: AES-11-2009 Section 4.5 enables audio-video synchronization in combined production environments, maintaining mathematical relationships from Table 1 for all video frame rates including NTSC pull-down.
+
+**Functional Behavior**:
+1. System shall accept video reference signal via HAL video sync interface
+2. System shall detect video sync pulse half-amplitude point on line 1 (525-line) or line 4 (625-line)
+3. System shall generate DARS with X/Z preamble aligned to video sync pulse per Section 5.3.4
+4. System shall maintain ±5% phase tolerance between DARS and video reference (Section 5.3.5)
+5. System shall support integer ratio video systems (Table 1: 24, 25, 30 Hz and multiples)
+6. System shall handle non-integer ratio NTSC systems (30/1.001 Hz) with ±1 sample offset tolerance
+7. System shall calculate samples per video frame per Table 1 relationships
+8. System shall identify alignment frame for non-integer ratios (every 5th frame for NTSC)
+
+**Boundary Values** (from AES-11 Table 1):
+- **Integer Ratios (Synchronous Lock)**:
+  - 48 kHz @ 24 Hz video: 2000 samples/frame (exact)
+  - 48 kHz @ 25 Hz video: 1920 samples/frame (exact)
+  - 48 kHz @ 30 Hz video: 1600 samples/frame (exact)
+  - 44.1 kHz @ 25 Hz video: 1764 samples/frame (exact)
+- **Non-Integer Ratios (±1 sample tolerance)**:
+  - 48 kHz @ 30/1.001 Hz (29.97 Hz NTSC): 1601.6 samples/frame (~1601 or 1602)
+  - 44.1 kHz @ 30/1.001 Hz: 1471.47 samples/frame (~1471 or 1472)
+- **Phase Tolerance**: ±5% of AES3 frame period for video-to-DARS alignment (Section 5.3.5)
+- **Video Line Reference**: Line 1 (525/59.94 systems) or Line 4 (625/50 systems)
+
+**Error Handling**:
+| Error Condition | System Action | User Notification | Log Level |
+|----------------|---------------|-------------------|-----------|
+| Video sync signal lost | Hold last DARS frequency, flag warning | `VIDEO_SYNC_WARNING_SIGNAL_LOST` | WARNING |
+| Video frame rate unsupported | Reject video reference, use alternate method | `VIDEO_SYNC_ERROR_UNSUPPORTED_RATE` | ERROR |
+| Sample count mismatch (non-integer) | Accept ±1 sample variance, log event | `VIDEO_SYNC_INFO_NON_INTEGER_RATIO` | INFO |
+| Video-to-DARS phase exceeds ±5% | Trigger realignment | `VIDEO_SYNC_WARNING_PHASE_VIOLATION` | WARNING |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Video-referenced DARS at 48 kHz / 25 Hz (integer ratio)
+  Given 25 Hz video reference signal (PAL)
+  And system configured for 48 kHz audio sampling
+  When system derives DARS from video reference
+  Then DARS shall have exactly 1920 samples per video frame (48000/25)
+  And DARS X preamble shall align to video line 1 sync half-amplitude point
+  And alignment shall be within ±1.0 µs (±5% of 20.83 µs frame @ 48 kHz)
+  And synchronization shall be maintained on every video frame
+
+Scenario: Video-referenced DARS at 48 kHz / 29.97 Hz (non-integer NTSC)
+  Given 29.97 Hz video reference (30/1.001 Hz NTSC)
+  And system configured for 48 kHz audio sampling
+  When system derives DARS from video reference
+  Then DARS shall have 1601 or 1602 samples per video frame (±1 sample tolerance)
+  And alignment frame shall occur every 5th video frame (per AES-11 Section 4.5.3)
+  And system shall provide sufficient hysteresis to prevent sample slips
+  And video_audio_ratio API shall report 1601.6 samples/frame (non-integer)
+
+Scenario: Handle video sync signal loss
+  Given system locked to video reference
+  And stable DARS generation for >10 seconds
+  When video sync signal is lost
+  Then system shall log WARNING `VIDEO_SYNC_WARNING_SIGNAL_LOST`
+  And system shall hold last DARS frequency using internal oscillator
+  And system shall maintain synchronization for [TBD] seconds (holdover)
+  When video sync signal returns
+  Then system shall re-synchronize within 2 seconds
+
+Scenario: Video frame rate validation
+  Given system receives video reference signal
+  When system detects video frame rate
+  Then system shall validate rate against Table 1 supported rates
+  And system shall calculate exact samples per frame relationship
+  And system shall identify integer vs non-integer ratio
+  And video_frame_rate_hz API shall report detected rate
+  And samples_per_video_frame API shall report calculated samples
+```
+
+**Dependencies**:
+- **Internal**: REQ-F-DARS-001 (DARS generation), REQ-F-HAL-003 (video sync interface), REQ-F-DARS-004 (phase tolerance)
+- **External**: SMPTE 318M-1999 for video sync specifications
+
+**Verification Method**:
+- Video sync pulse measurement with oscilloscope
+- Sample count verification across multiple video frames
+- NTSC non-integer ratio testing with ±1 sample variance validation
+- Interoperability testing with video equipment
+
+---
+
+#### REQ-F-DARS-006: GPS-Referenced Synchronization
+
+- **Trace to**: StR-FUNC-001
+- **Priority**: Medium (P2)
+- **AES-11 Reference**: Section 4.2.4
+
+**Description**: The system shall support GPS-referenced synchronization using GPS receiver to provide frequency reference, phase alignment from 1-second pulses, and time-of-day sample address code.
+
+**Rationale**: AES-11-2009 Section 4.2.4 enables GPS-based synchronization for distributed facilities requiring common time reference without direct signal distribution.
+
+**Functional Behavior**:
+1. System shall accept GPS 1-pulse-per-second (1PPS) timing signal via HAL GPS interface
+2. System shall lock DARS frequency to GPS-derived 10 MHz reference (if available)
+3. System shall align DARS phase to GPS 1PPS rising edge within ±1 µs
+4. System shall extract GPS time-of-day and encode in AES3 channel status bytes 18-21
+5. System shall support GPS signal loss with holdover mode (maintain last frequency)
+6. System shall report GPS lock status (UNLOCKED, ACQUIRING, LOCKED, HOLDOVER)
+7. System shall measure GPS timing jitter and report via diagnostic API
+
+**Boundary Values**:
+- **1PPS Timing Accuracy**: ±1 µs phase alignment to GPS 1PPS edge
+- **Frequency Reference**: 10 MHz from GPS disciplined oscillator (if available)
+- **Holdover Duration**: Maintain ±1 ppm accuracy for minimum 24 hours after GPS loss
+- **Time-of-Day Encoding**: UTC time in AES3 channel status per AES-11 Section 5.1.5
+- **GPS Acquisition Time**: <5 minutes for cold start, <30 seconds for warm start
+
+**Error Handling**:
+| Error Condition | System Action | User Notification | Log Level |
+|----------------|---------------|-------------------|-----------|
+| GPS signal lost | Enter HOLDOVER mode, use internal TCXO | `GPS_WARNING_SIGNAL_LOST` | WARNING |
+| GPS never acquires (timeout) | Fall back to alternate sync method | `GPS_ERROR_ACQUISITION_TIMEOUT` | ERROR |
+| GPS time-of-day invalid | Skip time encoding, sync frequency only | `GPS_WARNING_INVALID_TIME` | WARNING |
+| Holdover exceeds 24 hours | Flag degraded accuracy | `GPS_WARNING_HOLDOVER_EXPIRED` | WARNING |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: GPS-referenced DARS with 1PPS phase lock
+  Given GPS receiver with valid 1PPS signal
+  And GPS lock status is LOCKED
+  When system generates DARS aligned to GPS 1PPS
+  Then DARS X preamble shall align to 1PPS rising edge within ±1 µs
+  And gps_lock_status API shall return LOCKED
+  And gps_phase_offset_ns API shall report <1000 ns offset
+
+Scenario: GPS time-of-day encoding in channel status
+  Given GPS receiver with valid time-of-day (2025-11-07 14:30:00 UTC)
+  When system encodes time in AES3 channel status
+  Then bytes 18-21 shall contain UTC time per AES-11 Section 5.1.5
+  And time_of_day API shall return "2025-11-07T14:30:00Z"
+  And channel status metadata flag shall be set per AES3
+
+Scenario: GPS holdover mode after signal loss
+  Given system in GPS LOCKED state for >1 hour
+  And GPS holdover uses TCXO with ±0.5 ppm stability
+  When GPS signal is lost
+  Then system shall enter HOLDOVER mode within 1 second
+  And system shall log WARNING `GPS_WARNING_SIGNAL_LOST`
+  And frequency accuracy shall remain ±1 ppm for 24 hours
+  And gps_lock_status API shall return HOLDOVER
+  And holdover_duration_seconds API shall increment
+
+Scenario: GPS acquisition timeout and fallback
+  Given system configured for GPS-referenced sync
+  And no GPS signal available after 10 minutes
+  When GPS acquisition timeout occurs
+  Then system shall log ERROR `GPS_ERROR_ACQUISITION_TIMEOUT`
+  And system shall fall back to DARS-referenced sync (if available)
+  And gps_lock_status API shall return UNLOCKED
+```
+
+**Dependencies**:
+- **Internal**: REQ-F-DARS-001 (DARS generation), REQ-F-HAL-004 (GPS interface)
+- **External**: IEEE 1588-2019 repository (optional PTP support), GPS receiver hardware
+
+**Verification Method**:
+- GPS simulator testing with controlled 1PPS and time-of-day signals
+- Holdover accuracy measurement over 24+ hours
+- Time-of-day encoding validation
+- Signal loss and recovery testing
+
+---
+
+### 3.3 Hardware Abstraction Layer (HAL) Requirements
+
+Requirements for platform-independent hardware interfaces per StR-FUNC-002.
+
+#### REQ-F-HAL-001: Audio Interface Abstraction
+
+- **Trace to**: StR-FUNC-002, StR-USER-001
+- **Priority**: Critical (P0)
+
+**Description**: The system shall provide hardware abstraction layer for audio interfaces enabling platform-independent DARS transmission and reception without vendor-specific code in protocol implementation.
+
+**Rationale**: Hardware abstraction is core architectural requirement enabling "compile without any vendor drivers" principle and supporting ARM Cortex-M7, x86-64 Linux/Windows platforms.
+
+**Functional Behavior**:
+1. System shall define `audio_hal_t` interface structure with function pointers for audio operations
+2. System shall provide `send_audio_frame()` function to transmit AES3 frames
+3. System shall provide `receive_audio_frame()` function to receive AES3 frames
+4. System shall provide `set_sample_rate()` function for 32/44.1/48/96 kHz configuration
+5. System shall provide `get_audio_status()` function for interface health monitoring
+6. System shall support asynchronous callback model for real-time audio processing
+7. System shall document HAL contract in header file with usage examples
+
+**Interface Definition**:
+```c
+typedef struct audio_hal {
+    /* Send AES3 frame to hardware (non-blocking) */
+    int (*send_audio_frame)(const aes3_frame_t* frame);
+    
+    /* Receive AES3 frame from hardware (non-blocking) */
+    int (*receive_audio_frame)(aes3_frame_t* frame);
+    
+    /* Set sampling frequency (32000, 44100, 48000, 96000 Hz) */
+    int (*set_sample_rate)(uint32_t sample_rate_hz);
+    
+    /* Get audio interface status */
+    int (*get_audio_status)(audio_status_t* status);
+    
+    /* Register callback for received frames (optional) */
+    int (*register_rx_callback)(audio_frame_callback_t callback, void* user_data);
+    
+    /* Hardware-specific context (opaque to protocol) */
+    void* hw_context;
+} audio_hal_t;
+```
+
+**Boundary Values**:
+- **Supported Sample Rates**: 32000, 44100, 48000, 96000 Hz (per AES5-2018)
+- **Frame Buffer Size**: 192 bits (24 bytes) for AES3 stereo frame
+- **Callback Latency**: <10 µs from frame arrival to callback invocation (embedded targets)
+- **Error Return Codes**: 0 = success, negative = error code
+
+**Error Handling**:
+| Error Condition | System Action | User Notification | Log Level |
+|----------------|---------------|-------------------|-----------|
+| HAL function pointer NULL | Return `-EINVAL`, log error | `HAL_ERROR_NULL_FUNCTION` | CRITICAL |
+| Unsupported sample rate | Return `-ENOTSUP` | `HAL_ERROR_UNSUPPORTED_RATE` | ERROR |
+| Hardware unavailable | Return `-ENODEV` | `HAL_ERROR_NO_DEVICE` | ERROR |
+| Frame buffer overflow | Drop frame, increment counter | `HAL_WARNING_BUFFER_OVERFLOW` | WARNING |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Initialize audio HAL with platform implementation
+  Given ASIO platform audio implementation
+  And ASIO provides functions matching audio_hal_t interface
+  When protocol layer calls aes11_init(&asio_audio_hal)
+  Then protocol shall store HAL pointer
+  And protocol shall NOT call any ASIO-specific functions directly
+  And protocol shall use only HAL interface for audio operations
+
+Scenario: Send DARS frame via HAL
+  Given protocol has valid audio_hal_t interface
+  And DARS frame with 48 kHz sampling configured
+  When protocol calls hal->send_audio_frame(&dars_frame)
+  Then HAL shall transmit frame to hardware
+  And HAL shall return 0 on success
+  And frame shall appear on physical AES3 output within 1 sample period
+
+Scenario: Receive external DARS via HAL callback
+  Given protocol registered rx_callback with HAL
+  When hardware receives AES3 frame
+  Then HAL shall invoke rx_callback within <10 µs
+  And callback shall receive valid aes3_frame_t pointer
+  And protocol shall extract TRP and process DARS
+
+Scenario: Handle unsupported sample rate
+  Given audio HAL implementation
+  When protocol calls hal->set_sample_rate(88200)  // Not in AES5
+  Then HAL shall return -ENOTSUP
+  And protocol shall log ERROR `HAL_ERROR_UNSUPPORTED_RATE`
+  And sample rate shall remain at previous valid setting
+```
+
+**Dependencies**:
+- **External**: Platform-specific HAL implementations (ASIO, ALSA, CoreAudio bridges in service layer)
+- **Internal**: REQ-F-DARS-001 (AES3 frame structure)
+
+**Verification Method**:
+- HAL validator tool testing interface contract
+- Mock HAL implementation for unit testing
+- Multi-platform HAL implementation verification (ARM, x86 Linux, x86 Windows)
+
+---
+
+#### REQ-F-HAL-002: Timing Interface Abstraction
+
+- **Trace to**: StR-FUNC-002, StR-PERF-001
+- **Priority**: Critical (P0)
+
+**Description**: The system shall provide hardware abstraction for high-precision timing interfaces enabling microsecond-resolution time measurements without platform-specific timing code in protocol implementation.
+
+**Rationale**: Timing precision is critical for AES-11 synchronization (Grade 1: ±1 ppm requires <1 ns jitter). HAL abstraction enables platform-independent protocol with platform-specific optimizations (e.g., RDTSC on x86, DWT_CYCCNT on ARM).
+
+**Functional Behavior**:
+1. System shall define `timing_hal_t` interface structure for timing operations
+2. System shall provide `get_time_ns()` function returning monotonic nanosecond timestamp
+3. System shall provide `get_sample_time()` function for audio sample-accurate timing
+4. System shall provide `sleep_us()` function for microsecond-precision delays
+5. System shall provide timing resolution query via `get_timing_resolution()`
+6. System shall support timing reference synchronization via `sync_timing_reference()`
+7. System shall guarantee monotonic time (no backwards jumps)
+
+**Interface Definition**:
+```c
+typedef struct timing_hal {
+    /* Get monotonic timestamp in nanoseconds */
+    uint64_t (*get_time_ns)(void);
+    
+    /* Get sample-accurate timestamp (sample number since epoch) */
+    uint64_t (*get_sample_time)(uint32_t sample_rate_hz);
+    
+    /* Sleep for specified microseconds (blocking) */
+    int (*sleep_us)(uint32_t microseconds);
+    
+    /* Get timing resolution in nanoseconds */
+    uint32_t (*get_timing_resolution_ns)(void);
+    
+    /* Synchronize timing reference (e.g., GPS 1PPS) */
+    int (*sync_timing_reference)(uint64_t reference_time_ns);
+    
+    /* Hardware-specific context */
+    void* hw_context;
+} timing_hal_t;
+```
+
+**Boundary Values**:
+- **Timing Resolution**: ≤100 ns (target 10 ns for Grade 1)
+- **Timestamp Range**: 64-bit unsigned (0 to 2^64-1 nanoseconds = 584 years)
+- **Monotonic Guarantee**: Timestamps never decrease
+- **Sleep Accuracy**: ±10 µs for sleep_us() calls
+
+**Error Handling**:
+| Error Condition | System Action | User Notification | Log Level |
+|----------------|---------------|-------------------|-----------|
+| Timing resolution insufficient | Log warning, use best available | `TIMING_WARNING_LOW_RESOLUTION` | WARNING |
+| Timestamp overflow (unlikely) | Wrap at 64-bit limit | `TIMING_INFO_TIMESTAMP_WRAP` | INFO |
+| Timing reference sync failure | Return error code | `TIMING_ERROR_SYNC_FAIL` | ERROR |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Measure TRP phase offset with nanosecond precision
+  Given timing HAL with ≤100 ns resolution
+  And DARS TRP occurs at hardware timestamp T_dars
+  And output TRP occurs at hardware timestamp T_output
+  When protocol calls hal->get_time_ns() for both TRPs
+  Then phase_offset_ns = |T_output - T_dars|
+  And phase offset measurement precision shall be ≤100 ns
+  And measurement shall enable ±1.0 µs tolerance validation @ 48 kHz
+
+Scenario: Monotonic timestamp guarantee
+  Given timing HAL implementation
+  When protocol calls hal->get_time_ns() repeatedly (1000 iterations)
+  Then every timestamp T[i+1] shall be ≥ T[i]
+  And no backwards time jumps shall occur
+  And timestamps shall increment monotonically
+
+Scenario: Sample-accurate timing for audio synchronization
+  Given 48 kHz sampling frequency
+  And system started at T0 nanoseconds
+  When protocol calls hal->get_sample_time(48000) at T1 nanoseconds
+  Then returned sample_number = (T1 - T0) * 48000 / 1e9
+  And sample timing shall be accurate to ±1 sample
+
+Scenario: Timing resolution query
+  Given platform timing HAL (e.g., ARM DWT_CYCCNT @ 216 MHz)
+  When protocol calls hal->get_timing_resolution_ns()
+  Then HAL shall return resolution = 1e9 / 216e6 ≈ 4.6 ns
+  And protocol shall verify resolution ≤100 ns requirement
+```
+
+**Dependencies**:
+- **External**: Platform timing sources (RDTSC, DWT_CYCCNT, clock_gettime, QueryPerformanceCounter)
+- **Internal**: REQ-F-DARS-004 (phase measurement), REQ-NF-PERF-001 (timing precision)
+
+**Verification Method**:
+- Timing resolution measurement on target platforms
+- Monotonicity stress testing (1M consecutive calls)
+- Phase measurement accuracy validation with oscilloscope
+- Cross-platform timing comparison
+
+---
+
+*[Continuing with REQ-F-HAL-003 (Sync Interface), REQ-F-HAL-004 (GPIO/Video/GPS), and remaining functional requirements...]*
 
 ---
 
