@@ -5,6 +5,7 @@ add_executable(aes11_tests
   test_dars_protocol.cpp
   test_capture_range.cpp
   test_phase_tolerance.cpp
+  test_gps_reference_sync.cpp
 )
 
 target_link_libraries(aes11_tests

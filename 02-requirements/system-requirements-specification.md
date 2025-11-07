@@ -967,7 +967,7 @@ Scenario: Video frame rate validation
 
 ---
 
-#### REQ-F-DARS-006: GPS-Referenced Synchronization
+#### REQ-F-DARS-006: GPS-Referenced Synchronization [Design: DES-DARS-GPS] [Tests: TEST-GPS-REF-001, TEST-GPS-REF-002, TEST-GPS-REF-003]
 
 - **Trace to**: StR-FUNC-001
 - **Priority**: Medium (P2)
