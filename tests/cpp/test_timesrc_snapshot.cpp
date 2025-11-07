@@ -38,3 +38,16 @@ TEST(TimingSnapshotServiceTests, SnapshotFieldsCoherent) {
     // For this mock: time_ns should equal tick * 1ms
     ASSERT_EQ(snap.time_ns, snap.tick * 1'000'000ULL);
 }
+
+// Edge Case: Large number of sequential snapshots should keep strictly increasing seq without overflow for practical test range.
+TEST(TimingSnapshotServiceTests, SequenceGrowthNoWrapInRange) {
+    MockClock clk;
+    AES::AES11::_2009::core::TimingSnapshotService svc(clk);
+    const int iterations = 1000; // practical bound
+    uint64_t lastSeq = 0;
+    for (int i = 0; i < iterations; ++i) {
+        auto s = svc.snapshot();
+        ASSERT_GT(s.seq, lastSeq);
+        lastSeq = s.seq;
+    }
+}

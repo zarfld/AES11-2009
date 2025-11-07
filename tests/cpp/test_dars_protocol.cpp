@@ -31,3 +31,12 @@ TEST(DARSProtocolTests, RequestAcquireIgnoredIfNotIdle) {
     proto.handleEvent(DARSEvent::FrameValid);
     EXPECT_FALSE(proto.requestAcquire()); // locked
 }
+
+// Edge Case: Invalid transitions should not change from Idle when FrameValid without BeginAcquire.
+TEST(DARSProtocolTests, FrameValidIgnoredInIdle) {
+    DARSProtocol proto;
+    ASSERT_EQ(proto.state(), DARSState::Idle);
+    proto.handleEvent(DARSEvent::FrameValid);
+    EXPECT_EQ(proto.state(), DARSState::Idle);
+}
+

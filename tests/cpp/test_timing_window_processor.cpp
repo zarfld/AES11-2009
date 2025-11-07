@@ -47,3 +47,33 @@ TEST(TimingWindowProcessorTests, StabilityFlagBehavior) {
     EXPECT_EQ(m.count, 5u);
     EXPECT_FALSE(m.stable) << "Variance should exceed threshold after disturbance";
 }
+
+// Edge Case: Capacity 1 window should always yield variance 0 and count 1.
+TEST(TimingWindowProcessorTests, CapacityOneWindow) {
+    TimingWindowProcessor proc(1, 0.01);
+    proc.addSample(10.0);
+    auto m = proc.metrics();
+    EXPECT_EQ(m.count, 1u);
+    EXPECT_NEAR(m.mean, 10.0, 1e-12);
+    EXPECT_NEAR(m.variance, 0.0, 1e-12);
+    EXPECT_TRUE(m.stable);
+    // Add another sample; window slides, still variance zero.
+    proc.addSample(20.0);
+    m = proc.metrics();
+    EXPECT_EQ(m.count, 1u);
+    EXPECT_NEAR(m.mean, 20.0, 1e-12);
+    EXPECT_NEAR(m.variance, 0.0, 1e-12);
+}
+
+// Edge Case: Clear resets aggregates.
+TEST(TimingWindowProcessorTests, ClearResetsAggregates) {
+    TimingWindowProcessor proc(4, 1.0);
+    proc.addSample(1.0);
+    proc.addSample(2.0);
+    proc.clear();
+    auto m = proc.metrics();
+    EXPECT_EQ(m.count, 0u);
+    EXPECT_NEAR(m.mean, 0.0, 1e-12);
+    EXPECT_NEAR(m.variance, 0.0, 1e-12);
+}
+

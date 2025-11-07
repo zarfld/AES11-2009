@@ -43,3 +43,41 @@ TEST(SyncSelectionTests, DegradedSourcePenalized) {
     EXPECT_EQ(sel, 1u);
 }
 
+// Edge Case: Empty source list returns invalid index and does not alter current.
+TEST(SyncSelectionTests, EmptySourceListReturnsInvalid) {
+    SynchronizationManager mgr(0.2);
+    std::vector<SourceMetrics> none;
+    auto sel = mgr.select(none);
+    EXPECT_EQ(sel, SynchronizationManager::invalidIndex());
+    EXPECT_EQ(mgr.current(), SynchronizationManager::invalidIndex());
+}
+
+// Edge Case: Tie scores retain current due to hysteresis even if second appears equally good.
+TEST(SyncSelectionTests, TieScoresRetainCurrent) {
+    SynchronizationManager mgr(0.1);
+    std::vector<SourceMetrics> sources = {
+        {0.10, 5.0, false}, // score 4.90
+        {0.10, 5.2, false}  // score 5.10 (initial best)
+    };
+    size_t first = mgr.select(sources);
+    EXPECT_EQ(first, 1u);
+    // Adjust source0 to tie score of source1 but improvement below margin
+    sources[0].quality = 5.2; // score now 5.10 equal
+    size_t second = mgr.select(sources);
+    EXPECT_EQ(second, 1u); // retain current
+}
+
+// Edge Case: All sources degraded selects highest (quality - stability - penalty).
+TEST(SyncSelectionTests, AllSourcesDegradedSelectsHighestScore) {
+    SynchronizationManager mgr(0.3);
+    std::vector<SourceMetrics> sources = {
+        {0.10, 6.0, true},  // score -4.10
+        {0.05, 6.1, true},  // score -3.95 (best)
+        {0.20, 6.3, true}   // score -3.90 (actually best -> 6.3-0.20-10 = -3.90)
+    };
+    // Correction: compute each precisely -> choose index 2
+    size_t sel = mgr.select(sources);
+    EXPECT_EQ(sel, 2u);
+}
+
+
