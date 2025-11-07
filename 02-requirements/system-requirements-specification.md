@@ -1580,6 +1580,767 @@ Scenario: Three-vendor cascaded synchronization chain
 
 ---
 
+## 3.5 Error Handling and Diagnostics Requirements
+
+Requirements for comprehensive error detection, recovery, and diagnostic capabilities per StR-REL-xxx.
+
+#### REQ-F-ERROR-001: Error Detection and Classification Framework
+
+- **Trace to**: StR-REL-001, StR-REL-002, StR-USER-003
+- **Priority**: Critical (P0)
+
+**Description**: The system shall provide comprehensive error detection and classification framework with structured error taxonomy, severity levels, and error code assignments for all failure modes identified in SFMEA analysis.
+
+**Rationale**: IEEE 1633-2016 Software Reliability Engineering requires systematic error detection aligned with SFMEA (Software Failure Mode and Effects Analysis). Structured error taxonomy enables automated error recovery and diagnostic analysis.
+
+**Functional Behavior**:
+
+1. System shall detect all error conditions identified in SFMEA with Risk Priority Number (RPN) >100
+2. System shall classify errors by severity: CRITICAL, ERROR, WARNING, INFO
+3. System shall assign unique error codes in format: `AES11_[SUBSYSTEM]_[SEVERITY]_[ERROR_ID]`
+4. System shall provide error description strings for each error code
+5. System shall track error occurrence statistics (count, first occurrence, last occurrence)
+6. System shall support error filtering and querying via diagnostic API
+
+**Error Taxonomy Structure**:
+```c
+typedef enum {
+    AES11_SEVERITY_CRITICAL = 0,  // System failure, unusable
+    AES11_SEVERITY_ERROR = 1,     // Major malfunction, degraded operation
+    AES11_SEVERITY_WARNING = 2,   // Minor issue, may require attention
+    AES11_SEVERITY_INFO = 3       // Informational, normal operation
+} aes11_error_severity_t;
+
+typedef enum {
+    AES11_SUBSYSTEM_DARS = 0x0100,
+    AES11_SUBSYSTEM_SYNC = 0x0200,
+    AES11_SUBSYSTEM_HAL = 0x0300,
+    AES11_SUBSYSTEM_CONFORM = 0x0400,
+    AES11_SUBSYSTEM_INTEG = 0x0500
+} aes11_subsystem_t;
+
+typedef struct {
+    uint32_t error_code;              // Unique error code
+    aes11_error_severity_t severity;  // Severity level
+    aes11_subsystem_t subsystem;      // Originating subsystem
+    char description[256];            // Human-readable description
+    uint32_t occurrence_count;        // Number of times occurred
+    uint64_t first_occurrence_ns;     // First occurrence timestamp
+    uint64_t last_occurrence_ns;      // Last occurrence timestamp
+    uint32_t sfmea_rpn;              // Risk Priority Number from SFMEA
+} aes11_error_info_t;
+
+// Error code construction: subsystem (8 bits) | severity (8 bits) | error_id (16 bits)
+#define AES11_ERROR_CODE(subsys, sev, id) \
+    (((subsys) << 16) | ((sev) << 8) | (id))
+```
+
+**Example Error Codes** (from SFMEA analysis):
+```c
+// DARS subsystem errors
+#define AES11_DARS_CRITICAL_INVALID_FORMAT      AES11_ERROR_CODE(AES11_SUBSYSTEM_DARS, AES11_SEVERITY_CRITICAL, 0x0001)
+#define AES11_DARS_ERROR_FREQUENCY_OUT_OF_RANGE AES11_ERROR_CODE(AES11_SUBSYSTEM_DARS, AES11_SEVERITY_ERROR, 0x0002)
+#define AES11_DARS_WARNING_GRADE_MISMATCH       AES11_ERROR_CODE(AES11_SUBSYSTEM_DARS, AES11_SEVERITY_WARNING, 0x0003)
+
+// Sync subsystem errors
+#define AES11_SYNC_CRITICAL_LOCK_FAILURE        AES11_ERROR_CODE(AES11_SUBSYSTEM_SYNC, AES11_SEVERITY_CRITICAL, 0x0001)
+#define AES11_SYNC_ERROR_PHASE_VIOLATION        AES11_ERROR_CODE(AES11_SUBSYSTEM_SYNC, AES11_SEVERITY_ERROR, 0x0002)
+#define AES11_SYNC_WARNING_REFERENCE_LOST       AES11_ERROR_CODE(AES11_SUBSYSTEM_SYNC, AES11_SEVERITY_WARNING, 0x0003)
+
+// HAL subsystem errors
+#define AES11_HAL_CRITICAL_NULL_FUNCTION        AES11_ERROR_CODE(AES11_SUBSYSTEM_HAL, AES11_SEVERITY_CRITICAL, 0x0001)
+#define AES11_HAL_ERROR_NO_DEVICE               AES11_ERROR_CODE(AES11_SUBSYSTEM_HAL, AES11_SEVERITY_ERROR, 0x0002)
+```
+
+**Boundary Values**:
+| Parameter | Minimum | Typical | Maximum | Unit | Reference |
+|-----------|---------|---------|---------|------|-----------|
+| Error code range | 0x00000000 | - | 0xFFFFFFFF | - | Design |
+| Error description length | 64 | 128 | 256 | chars | Implementation |
+| SFMEA RPN threshold | 100 | - | 1000 | - | IEEE 1633 |
+| Error history retention | 1000 | 10000 | 100000 | entries | Memory limit |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Detect and classify DARS format error
+  Given system receives invalid AES3 frame (corrupted preamble)
+  When error detection validates frame format
+  Then error shall be classified as AES11_DARS_CRITICAL_INVALID_FORMAT
+  And severity shall be CRITICAL
+  And subsystem shall be DARS (0x0100)
+  And description shall be "Invalid AES3 frame format: preamble corruption"
+  And occurrence_count shall increment
+  And first_occurrence_ns and last_occurrence_ns shall be recorded
+
+Scenario: Query error statistics via diagnostic API
+  Given system has logged 50 errors over 10 minutes
+  And error types include 2 CRITICAL, 8 ERROR, 40 WARNING
+  When diagnostic API queries error_get_statistics()
+  Then API shall return total count = 50
+  And CRITICAL count = 2, ERROR count = 8, WARNING count = 40
+  And most frequent error code shall be identified
+  And error occurrence timeline shall be available
+
+Scenario: SFMEA alignment for high-RPN failures
+  Given SFMEA identifies "GPS signal loss" with RPN = 240
+  When GPS 1PPS pulses stop for >2 seconds
+  Then system shall detect error AES11_SYNC_WARNING_REFERENCE_LOST
+  And error_info.sfmea_rpn shall equal 240
+  And error shall trigger automatic recovery per SFMEA mitigation
+```
+
+**Dependencies**:
+- **Internal**: All REQ-F-xxx requirements (error detection in all subsystems)
+- **External**: SFMEA analysis document (Phase 01 reliability requirements)
+
+**Verification Method**: Test (error injection tests, SFMEA coverage analysis, diagnostic API validation)
+
+---
+
+#### REQ-F-ERROR-002: Automatic Error Recovery Strategies
+
+- **Trace to**: StR-REL-002, StR-REL-004
+- **Priority**: High (P1)
+
+**Description**: The system shall implement automatic error recovery strategies for recoverable errors including reference switching, state reset, and resource reallocation to maximize system availability and MTBF targets.
+
+**Rationale**: IEEE 1633-2016 requires reliability growth through defect prevention and automated recovery. Automatic recovery reduces downtime and improves MTBF (Mean Time Between Failures) for professional audio environments (target >10,000 hours).
+
+**Functional Behavior**:
+
+1. System shall attempt automatic recovery for ERROR and WARNING severity conditions
+2. System shall NOT attempt automatic recovery for CRITICAL conditions (requires reset)
+3. System shall implement reference fallback: GPS → DARS → Audio Input → Internal Oscillator
+4. System shall implement state reset for recoverable lock failures
+5. System shall limit recovery attempts to 3 per error condition (prevent infinite loops)
+6. System shall log all recovery attempts with success/failure status
+7. System shall escalate to CRITICAL if recovery fails after 3 attempts
+
+**Recovery Strategy Table**:
+
+| Error Condition | Recovery Strategy | Max Attempts | Timeout | Escalation |
+|----------------|-------------------|--------------|---------|------------|
+| GPS signal lost | Switch to DARS reference | 3 | 10s | Enter holdover |
+| DARS lock failure | Try audio input reference | 3 | 5s | Free-run mode |
+| Phase drift excessive | Re-sync PLL, adjust phase offset | 3 | 2s | Log ERROR |
+| HAL audio buffer overflow | Drop oldest frames, increase buffer | 1 | immediate | Log WARNING |
+| Frequency out of capture range | Increase capture window temporarily | 2 | 5s | Reject signal |
+| Cascaded error >20% | Reset error accumulator, re-lock | 1 | 1s | Log WARNING |
+
+**Recovery State Machine**:
+```c
+typedef enum {
+    RECOVERY_IDLE,           // No recovery in progress
+    RECOVERY_IN_PROGRESS,    // Attempting recovery
+    RECOVERY_SUCCEEDED,      // Recovery successful
+    RECOVERY_FAILED,         // Recovery failed, escalate
+    RECOVERY_EXHAUSTED       // Max attempts reached
+} recovery_state_t;
+
+typedef struct {
+    uint32_t error_code;          // Error being recovered
+    recovery_state_t state;       // Recovery state
+    uint32_t attempt_count;       // Current attempt number
+    uint32_t max_attempts;        // Maximum allowed attempts
+    uint64_t recovery_start_ns;   // When recovery started
+    uint32_t timeout_ms;          // Recovery timeout
+    bool escalation_triggered;    // Escalated to higher severity
+} recovery_context_t;
+```
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Automatic fallback from GPS to DARS on signal loss
+  Given system locked to GPS reference (SYNC_REF_GPS)
+  And DARS reference available as fallback
+  And GPS 1PPS pulses stop (antenna disconnected)
+  When error AES11_SYNC_WARNING_REFERENCE_LOST is detected
+  Then system shall automatically switch to SYNC_REF_DARS within 2 seconds
+  And recovery_context.attempt_count shall be 1
+  And recovery shall succeed (RECOVERY_SUCCEEDED)
+  And lock_status shall transition GPS → HOLDOVER → DARS
+  And no escalation to CRITICAL shall occur
+
+Scenario: Recovery attempt exhaustion and escalation
+  Given DARS lock failure detected (frequency out of capture range)
+  And recovery strategy allows max 3 attempts
+  When attempt 1 fails after 5 seconds timeout
+  And attempt 2 fails after 5 seconds timeout
+  And attempt 3 fails after 5 seconds timeout
+  Then recovery_context.state shall be RECOVERY_EXHAUSTED
+  And error severity shall escalate ERROR → CRITICAL
+  And system shall enter free-run unlocked state
+  And notification AES11_SYNC_CRITICAL_LOCK_FAILURE shall be sent
+  And manual intervention required flag shall be set
+
+Scenario: Successful phase drift recovery
+  Given system locked to DARS
+  And phase offset drifts to +1.5 µs (exceeds ±1.0 µs tolerance @ 48 kHz)
+  When error AES11_SYNC_ERROR_PHASE_VIOLATION detected
+  Then system shall attempt PLL re-sync
+  And system shall adjust phase offset to target ±0.5 µs
+  And recovery shall complete within 2 seconds
+  And recovery_context.state shall be RECOVERY_SUCCEEDED
+  And lock_status shall remain SYNC_LOCKED throughout
+```
+
+**Dependencies**:
+- **Internal**: REQ-F-ERROR-001 (error detection), REQ-F-SYNC-001 (reference switching), REQ-F-HAL-003 (sync HAL)
+- **External**: IEEE 1633-2016 reliability requirements
+
+**Verification Method**: Test (error injection with recovery validation, MTBF improvement measurement, recovery timeout testing)
+
+---
+
+#### REQ-F-ERROR-003: Diagnostic Interface and Event Logging
+
+- **Trace to**: StR-USER-003, StR-REL-006
+- **Priority**: High (P1)
+
+**Description**: The system shall provide comprehensive diagnostic interface and structured event logging with configurable log levels, circular buffers for embedded targets, and integration with external logging frameworks.
+
+**Rationale**: Diagnostic visibility is critical for field troubleshooting, reliability analysis, and defect prevention (IEEE 1633 Section 6.4). Structured logging enables automated analysis and operational monitoring.
+
+**Functional Behavior**:
+
+1. System shall implement 4 log levels: DEBUG, INFO, WARNING, ERROR (aligned with error severity)
+2. System shall use circular buffers for embedded targets (configurable size 1KB-64KB)
+3. System shall support log output redirection (stdout, file, syslog, custom handler)
+4. System shall include timestamp, subsystem, severity, and message in each log entry
+5. System shall provide runtime log level configuration via diagnostic API
+6. System shall support log filtering by subsystem and severity
+7. System shall implement zero-copy logging for real-time constraints (<10 µs overhead)
+
+**Logging Interface**:
+```c
+typedef enum {
+    LOG_LEVEL_DEBUG = 0,
+    LOG_LEVEL_INFO = 1,
+    LOG_LEVEL_WARNING = 2,
+    LOG_LEVEL_ERROR = 3
+} log_level_t;
+
+typedef struct {
+    uint64_t timestamp_ns;           // Nanosecond timestamp
+    log_level_t level;               // Log level
+    aes11_subsystem_t subsystem;     // Originating subsystem
+    char message[256];               // Log message
+    uint32_t thread_id;              // Thread/task ID
+} log_entry_t;
+
+// Diagnostic API
+int aes11_log_set_level(log_level_t level);
+int aes11_log_set_output(log_output_handler_t handler, void* context);
+int aes11_log_enable_subsystem(aes11_subsystem_t subsystem, bool enable);
+int aes11_log_get_entries(log_entry_t* buffer, uint32_t max_entries, uint32_t* returned);
+int aes11_log_clear(void);
+
+// Zero-copy logging macros (compile-time format string, runtime args)
+#define AES11_LOG_DEBUG(subsys, fmt, ...) \
+    aes11_log_write(LOG_LEVEL_DEBUG, subsys, fmt, ##__VA_ARGS__)
+#define AES11_LOG_INFO(subsys, fmt, ...) \
+    aes11_log_write(LOG_LEVEL_INFO, subsys, fmt, ##__VA_ARGS__)
+#define AES11_LOG_WARNING(subsys, fmt, ...) \
+    aes11_log_write(LOG_LEVEL_WARNING, subsys, fmt, ##__VA_ARGS__)
+#define AES11_LOG_ERROR(subsys, fmt, ...) \
+    aes11_log_write(LOG_LEVEL_ERROR, subsys, fmt, ##__VA_ARGS__)
+```
+
+**Boundary Values**:
+| Parameter | Minimum | Typical | Maximum | Unit | Reference |
+|-----------|---------|---------|---------|------|-----------|
+| Circular buffer size | 1 | 16 | 64 | KB | Embedded constraint |
+| Log message length | 64 | 128 | 256 | chars | Implementation |
+| Logging overhead | 0 | 5 | 10 | µs | Real-time requirement |
+| Retained log entries | 100 | 1000 | 10000 | entries | Buffer size |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Log DARS lock event with structured data
+  Given log level set to INFO
+  And DARS subsystem logging enabled
+  When system locks to DARS at 48 kHz with frequency offset +0.3 ppm
+  Then log entry shall be created with:
+    | timestamp_ns | <current time> |
+    | level | LOG_LEVEL_INFO |
+    | subsystem | AES11_SUBSYSTEM_DARS |
+    | message | "DARS lock acquired: 48000 Hz, offset +0.3 ppm" |
+  And log entry shall be retrievable via aes11_log_get_entries()
+
+Scenario: Circular buffer wraparound on embedded target
+  Given circular buffer size = 1024 bytes (16 entries × 64 bytes each)
+  And system has logged 100 entries over 1 hour
+  When diagnostic API queries aes11_log_get_entries(buffer, 50, &count)
+  Then API shall return most recent 16 entries (circular buffer limit)
+  And oldest entries shall be overwritten
+  And count shall equal 16
+
+Scenario: Real-time logging overhead measurement
+  Given system running on ARM Cortex-M7 @ 216 MHz
+  And log level set to INFO
+  When 1000 log entries are written consecutively
+  Then average logging overhead shall be <10 µs per entry
+  And maximum overhead shall be <50 µs (worst case)
+  And no frame drops shall occur in audio processing
+```
+
+**Dependencies**:
+- **Internal**: REQ-F-ERROR-001 (error codes), REQ-F-HAL-002 (timing for timestamps)
+- **External**: Platform-specific logging (syslog, Windows Event Log, Android logcat)
+
+**Verification Method**: Test (logging performance tests, buffer wraparound tests, integration with external logging frameworks)
+
+---
+
+## 3.6 Integration Requirements
+
+Requirements for integration with external standards repositories and build system per StR-FUNC-004.
+
+#### REQ-F-INTEG-001: AES3-2009 Repository Integration
+
+- **Trace to**: StR-FUNC-004, StR-COMP-002
+- **Priority**: Critical (P0)
+
+**Description**: The system shall integrate with external AES3-2009 repository (https://github.com/zarfld/AES3-2009.git) for AES3 digital audio interface frame format, preamble detection, and channel status processing via CMake FetchContent.
+
+**Rationale**: AES-11 DARS is transmitted via AES3 interface (Section 4.3). Reusing AES3-2009 implementation avoids code duplication and maintains single source of truth for AES3 protocol per architectural principle "no redundant implementations."
+
+**Functional Behavior**:
+
+1. System shall fetch AES3-2009 repository at CMake configure time
+2. System shall link against `aes3_2009` library target
+3. System shall use `AES::AES3::_2009::frames::AES3Frame` for frame handling
+4. System shall use `AES::AES3::_2009::preambles::PreambleDetector` for TRP detection
+5. System shall use `AES::AES3::_2009::channel::ChannelStatusProcessor` for channel status
+6. System shall NOT duplicate any AES3 frame format code in AES11-2009 repository
+7. System shall verify AES3-2009 API compatibility at compile time
+
+**CMake Integration**:
+```cmake
+include(FetchContent)
+
+# AES3-2009 External Repository (READY)
+FetchContent_Declare(
+    aes3_2009
+    GIT_REPOSITORY https://github.com/zarfld/AES3-2009.git
+    GIT_TAG        v1.0.0  # Specify stable version tag
+    GIT_SHALLOW    TRUE    # Fast clone
+)
+
+FetchContent_MakeAvailable(aes3_2009)
+
+# AES11-2009 depends on AES3-2009
+target_link_libraries(aes11_2009 PUBLIC
+    aes3_2009              # AES3 frame format and processing
+    standards_common       # Common utilities
+)
+
+target_include_directories(aes11_2009 PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/Standards
+    ${aes3_2009_SOURCE_DIR}/include  # AES3 headers
+)
+```
+
+**API Usage Example**:
+```cpp
+// ✅ CORRECT - Use AES3-2009 repository classes
+#include "AES/AES3/2009/frames/aes3_frame.hpp"
+#include "AES/AES3/2009/preambles/preamble_detector.hpp"
+
+namespace AES {
+namespace AES11 {
+namespace _2009 {
+namespace dars {
+
+class DARSGenerator {
+    AES::AES3::_2009::frames::AES3Frame create_dars_frame(uint32_t sample_rate) {
+        // Reuse AES3 frame format, don't reimplement
+        auto frame = AES::AES3::_2009::frames::AES3Frame::create_frame(sample_rate);
+        // ... populate DARS-specific channel status
+        return frame;
+    }
+    
+    uint64_t extract_trp(const AES::AES3::_2009::frames::AES3Frame& frame) {
+        // Reuse AES3 preamble detection
+        return AES::AES3::_2009::preambles::PreambleDetector::detect_x_preamble(frame);
+    }
+};
+
+} // namespace dars
+} // namespace _2009
+} // namespace AES11
+} // namespace AES
+```
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: AES3-2009 repository fetch at CMake configure
+  Given CMake project configuration for AES11-2009
+  And AES3-2009 repository available at https://github.com/zarfld/AES3-2009.git
+  When CMake configure runs with FetchContent_MakeAvailable(aes3_2009)
+  Then AES3-2009 repository shall be cloned to build/_deps/aes3_2009-src
+  And aes3_2009 library target shall be available
+  And AES3-2009 headers shall be in include path
+  And no CMake configuration errors shall occur
+
+Scenario: Use AES3Frame class for DARS transmission
+  Given DARS generator needs to create AES3 frame at 48 kHz
+  When code calls AES::AES3::_2009::frames::AES3Frame::create_frame(48000)
+  Then AES3Frame object shall be created with correct format:
+    | preamble | X/Y/Z patterns (3 time-unit violations) |
+    | subframes | 2 subframes × 32 bits each |
+    | sample rate | 48000 Hz |
+  And frame shall be AES3-2009 compliant
+  And no AES3 format code shall exist in AES11-2009 repository
+
+Scenario: Compile-time API compatibility verification
+  Given AES11-2009 code uses AES::AES3::_2009 namespace
+  When project compiles with -DCMAKE_BUILD_TYPE=Release
+  Then compilation shall succeed with zero errors
+  And linker shall resolve all AES3-2009 symbols
+  And no symbol conflicts shall occur
+  And if AES3-2009 API changes, compilation shall fail (type safety)
+```
+
+**Dependencies**:
+- **External**: AES3-2009 repository (https://github.com/zarfld/AES3-2009.git) must be accessible
+- **Internal**: REQ-F-DARS-001 (depends on AES3 frame parsing)
+
+**Verification Method**: Test (CMake build tests, API compatibility tests, namespace isolation tests)
+
+---
+
+#### REQ-F-INTEG-002: AES5-2018 Repository Integration
+
+- **Trace to**: StR-FUNC-004, StR-COMP-002  
+- **Priority**: Critical (P0)
+
+**Description**: The system shall integrate with external AES5-2018 repository (https://github.com/zarfld/AES5-2018.git) for standard sampling frequency definitions and multi-rate relationships via CMake FetchContent.
+
+**Rationale**: AES-11 Section 5.1.6 mandates sampling frequencies shall comply with AES5. Reusing AES5-2018 implementation ensures correct frequency definitions and relationships (48/96/192 kHz integer multiples).
+
+**Functional Behavior**:
+
+1. System shall fetch AES5-2018 repository at CMake configure time
+2. System shall link against `aes5_2018` library target
+3. System shall use `AES::AES5::_2018::rates::StandardSamplingRates` for frequency constants
+4. System shall use `AES::AES5::_2018::ratios::SampleRateRelationships` for multi-rate calculations
+5. System shall NOT hardcode sampling frequency values in AES11-2009 code
+6. System shall validate all sample rates against AES5-2018 definitions at runtime
+
+**CMake Integration**:
+```cmake
+# AES5-2018 External Repository (READY)
+FetchContent_Declare(
+    aes5_2018
+    GIT_REPOSITORY https://github.com/zarfld/AES5-2018.git
+    GIT_TAG        v1.0.0
+    GIT_SHALLOW    TRUE
+)
+
+FetchContent_MakeAvailable(aes5_2018)
+
+target_link_libraries(aes11_2009 PUBLIC
+    aes3_2009
+    aes5_2018              # AES5 sampling rates
+    standards_common
+)
+```
+
+**API Usage Example**:
+```cpp
+// ✅ CORRECT - Use AES5-2018 repository for sample rates
+#include "AES/AES5/2018/rates/standard_sampling_rates.hpp"
+#include "AES/AES5/2018/ratios/sample_rate_relationships.hpp"
+
+namespace AES {
+namespace AES11 {
+namespace _2009 {
+
+using AES::AES5::_2018::rates::StandardSamplingRates;
+using AES::AES5::_2018::ratios::SampleRateRelationships;
+
+class DARSFrequencyValidator {
+    bool is_valid_dars_rate(uint32_t sample_rate_hz) {
+        // Reuse AES5 definitions, don't hardcode
+        return StandardSamplingRates::is_standard_rate(sample_rate_hz);
+    }
+    
+    uint32_t get_48khz_rate() {
+        // Use AES5 constants, not magic numbers
+        return StandardSamplingRates::RATE_48000_HZ;  // Not "48000"
+    }
+    
+    bool validate_multi_rate_lock(uint32_t dars_rate, uint32_t device_rate) {
+        // Use AES5 multi-rate relationships
+        return SampleRateRelationships::is_integer_multiple(device_rate, dars_rate);
+    }
+};
+
+} // namespace _2009
+} // namespace AES11
+} // namespace AES
+```
+
+**Supported AES5 Sampling Frequencies**:
+- 32000 Hz (±2 ppm Grade 1, ±50 ppm Grade 2)
+- 44100 Hz (±2 ppm Grade 1, ±50 ppm Grade 2)
+- 48000 Hz (±2 ppm Grade 1, ±50 ppm Grade 2) - **Primary DARS rate**
+- 96000 Hz (2× 48000 Hz, exact integer multiple)
+- 192000 Hz (4× 48000 Hz, exact integer multiple)
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Validate DARS sample rate against AES5-2018 definitions
+  Given DARS generator configured for 48 kHz operation
+  When code calls StandardSamplingRates::is_standard_rate(48000)
+  Then function shall return true (48000 Hz is AES5 standard rate)
+  And when code calls StandardSamplingRates::RATE_48000_HZ
+  Then constant shall equal exactly 48000
+  And no hardcoded "48000" literals shall exist in AES11 code
+
+Scenario: Multi-rate lock validation using AES5 relationships
+  Given DARS at 48 kHz, device operating at 96 kHz
+  When code calls SampleRateRelationships::is_integer_multiple(96000, 48000)
+  Then function shall return true (96000 = 2 × 48000)
+  And relationship ratio shall be exactly 2.0
+  And when DARS at 48 kHz, device at 44.1 kHz
+  Then is_integer_multiple(44100, 48000) shall return false
+
+Scenario: AES5-2018 repository integration build test
+  Given CMake configured with both AES3-2009 and AES5-2018
+  When project builds with all repositories fetched
+  Then compilation shall succeed
+  And all AES5 sample rate constants shall be available
+  And no sample rate value shall be hardcoded in AES11 code
+  And static analysis shall verify AES5 API usage
+```
+
+**Dependencies**:
+- **External**: AES5-2018 repository (https://github.com/zarfld/AES5-2018.git)
+- **Internal**: REQ-F-DARS-004 (sampling frequency support)
+
+**Verification Method**: Test (CMake build tests, sample rate validation tests, magic number detection via static analysis)
+
+---
+
+#### REQ-F-INTEG-003: Cross-Repository Namespace Isolation
+
+- **Trace to**: StR-COMP-002, ADR-ARCH-001 (assumed from architecture)
+- **Priority**: High (P1)
+
+**Description**: The system shall maintain strict namespace isolation between AES11-2009, AES3-2009, and AES5-2018 repositories using C++ namespace hierarchy `AES::<Standard>::<Version>` to prevent symbol conflicts and enable parallel standard versions.
+
+**Rationale**: Multiple AES standard versions may coexist (AES3-2009 and future AES3-2023). Namespace isolation per standard+version enables backward compatibility and parallel implementation support.
+
+**Namespace Structure**:
+```cpp
+// AES11-2009 namespace (this repository)
+namespace AES {
+namespace AES11 {
+namespace _2009 {
+    namespace core { /* DARS protocol */ }
+    namespace dars { /* DARS generation */ }
+    namespace sync { /* Synchronization */ }
+    namespace video { /* Video sync */ }
+}}}
+
+// AES3-2009 namespace (external repository)
+namespace AES {
+namespace AES3 {
+namespace _2009 {
+    namespace frames { /* AES3 frame format */ }
+    namespace preambles { /* Preamble detection */ }
+    namespace channel { /* Channel status */ }
+}}}
+
+// AES5-2018 namespace (external repository)  
+namespace AES {
+namespace AES5 {
+namespace _2018 {
+    namespace rates { /* Sampling rates */ }
+    namespace ratios { /* Rate relationships */ }
+}}}
+```
+
+**Cross-Repository API Usage Rules**:
+
+1. **Explicit namespace qualification**: Always use fully qualified names for cross-repo calls
+2. **Using declarations at function scope**: Minimize namespace pollution
+3. **No global using directives**: Never `using namespace AES::AES3::_2009;` at file scope
+4. **Forward declarations**: Use when possible to minimize header coupling
+
+**Example of Correct Cross-Repository Usage**:
+```cpp
+// ✅ CORRECT - Explicit namespace qualification
+#include "AES/AES3/2009/frames/aes3_frame.hpp"
+#include "AES/AES5/2018/rates/standard_sampling_rates.hpp"
+
+namespace AES {
+namespace AES11 {
+namespace _2009 {
+namespace dars {
+
+class DARSProcessor {
+public:
+    void process_frame(const AES::AES3::_2009::frames::AES3Frame& frame) {
+        // Function-scope using declaration (OK)
+        using AES::AES5::_2018::rates::StandardSamplingRates;
+        
+        uint32_t rate = frame.get_sample_rate();
+        if (!StandardSamplingRates::is_standard_rate(rate)) {
+            throw std::invalid_argument("Non-standard sample rate");
+        }
+        // ... process
+    }
+};
+
+} // namespace dars
+} // namespace _2009
+} // namespace AES11
+} // namespace AES
+
+// ❌ WRONG - Global using directive
+// using namespace AES::AES3::_2009;  // NO! Pollutes global namespace
+```
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Namespace isolation prevents symbol conflicts
+  Given AES11-2009 defines class AES::AES11::_2009::core::Synchronizer
+  And AES3-2009 defines class AES::AES3::_2009::core::Synchronizer
+  When both headers are included in same translation unit
+  Then no symbol collision shall occur
+  And both classes shall be accessible via qualified names
+  And compilation shall succeed with zero ambiguity errors
+
+Scenario: Parallel standard versions coexist
+  Given future AES3-2023 repository created with namespace AES::AES3::_2023
+  When project links both aes3_2009 and aes3_2023 libraries
+  Then AES::AES3::_2009::frames::AES3Frame and AES::AES3::_2023::frames::AES3Frame shall coexist
+  And application code can choose which version to use
+  And no runtime symbol conflicts shall occur
+
+Scenario: Static analysis verifies namespace discipline
+  Given code uses cross-repository APIs
+  When static analysis scans for namespace violations
+  Then no global "using namespace" directives shall be found in header files
+  And all cross-repo calls shall use fully qualified names or function-scope using
+  And namespace hierarchy shall match folder structure exactly
+```
+
+**Dependencies**:
+- **External**: AES3-2009, AES5-2018 namespace structure compliance
+- **Internal**: All AES11-2009 code must follow namespace rules
+
+**Verification Method**: Static analysis (namespace policy checks, symbol conflict tests), compilation tests with multiple standard versions
+
+---
+
+#### REQ-F-INTEG-004: CMake Dependency Version Management
+
+- **Trace to**: StR-COMP-001, StR-MAINT-002
+- **Priority**: High (P1)
+
+**Description**: The system shall use semantic versioning for external repository dependencies with Git tag pinning, version compatibility checks, and automatic API breaking change detection via CMake configuration.
+
+**Rationale**: Professional audio systems require stable, reproducible builds. Semantic versioning (MAJOR.MINOR.PATCH) enables automatic compatibility detection and prevents API breaking changes from entering production builds.
+
+**CMake Version Management**:
+```cmake
+# Semantic version specification for external dependencies
+set(AES3_2009_VERSION "1.2.3")  # MAJOR=1, MINOR=2, PATCH=3
+set(AES5_2018_VERSION "1.0.1")
+
+# Version-pinned fetch with compatibility checking
+FetchContent_Declare(
+    aes3_2009
+    GIT_REPOSITORY https://github.com/zarfld/AES3-2009.git
+    GIT_TAG        v${AES3_2009_VERSION}  # Pin to specific version tag
+    GIT_SHALLOW    TRUE
+)
+
+# Compatibility check function
+function(check_dependency_compatibility REPO_NAME REQUIRED_MAJOR REQUIRED_MINOR)
+    # Get actual version from fetched repository
+    if(EXISTS "${${REPO_NAME}_SOURCE_DIR}/version.txt")
+        file(READ "${${REPO_NAME}_SOURCE_DIR}/version.txt" ACTUAL_VERSION)
+        string(REGEX MATCH "([0-9]+)\\.([0-9]+)\\.([0-9]+)" _ ${ACTUAL_VERSION})
+        set(ACTUAL_MAJOR ${CMAKE_MATCH_1})
+        set(ACTUAL_MINOR ${CMAKE_MATCH_2})
+        
+        # MAJOR version must match (breaking API changes)
+        if(NOT ACTUAL_MAJOR EQUAL REQUIRED_MAJOR)
+            message(FATAL_ERROR 
+                "${REPO_NAME} API breaking change: Required v${REQUIRED_MAJOR}.x, got v${ACTUAL_MAJOR}.x")
+        endif()
+        
+        # MINOR version must be >= required (backward compatible additions)
+        if(ACTUAL_MINOR LESS REQUIRED_MINOR)
+            message(WARNING 
+                "${REPO_NAME} version too old: Required v${REQUIRED_MAJOR}.${REQUIRED_MINOR}+, got v${ACTUAL_MAJOR}.${ACTUAL_MINOR}")
+        endif()
+        
+        message(STATUS "${REPO_NAME} version ${ACTUAL_VERSION} compatible (required ${REQUIRED_MAJOR}.${REQUIRED_MINOR}+)")
+    else()
+        message(FATAL_ERROR "${REPO_NAME} missing version.txt")
+    endif()
+endfunction()
+
+# Apply version checks after fetch
+FetchContent_MakeAvailable(aes3_2009 aes5_2018)
+check_dependency_compatibility(aes3_2009 1 2)  # Require AES3 v1.2+
+check_dependency_compatibility(aes5_2018 1 0)  # Require AES5 v1.0+
+```
+
+**Semantic Versioning Rules** (per semver.org):
+- **MAJOR**: Increment for API breaking changes (incompatible API changes)
+- **MINOR**: Increment for backward-compatible new features
+- **PATCH**: Increment for backward-compatible bug fixes
+
+**Dependency Update Policy**:
+| Change Type | AES11-2009 Action | Review Required |
+|-------------|-------------------|-----------------|
+| AES3 PATCH (1.2.3 → 1.2.4) | Auto-update (bug fix) | No (CI validation only) |
+| AES3 MINOR (1.2.x → 1.3.0) | Manual update | Yes (test new features) |
+| AES3 MAJOR (1.x.x → 2.0.0) | Block (breaking change) | Yes (full integration retest) |
+| AES5 any change | Manual review | Yes (sampling rates critical) |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Detect API breaking change in dependency
+  Given AES11-2009 requires AES3-2009 v1.2+
+  And CMake configured to fetch AES3-2009 v2.0.0 (MAJOR version bump)
+  When CMake configure runs with check_dependency_compatibility()
+  Then CMake shall FATAL_ERROR with message "AES3-2009 API breaking change: Required v1.x, got v2.x"
+  And build shall abort before compilation
+  And developer shall be forced to update AES11 code for new API
+
+Scenario: Accept backward-compatible dependency update
+  Given AES11-2009 requires AES3-2009 v1.2+ (uses features from v1.2)
+  And CMake fetches AES3-2009 v1.5.2 (MINOR version bump, backward compatible)
+  When version compatibility check runs
+  Then check shall PASS with status message "AES3-2009 version 1.5.2 compatible (required 1.2+)"
+  And build shall proceed normally
+  And all existing APIs shall remain functional
+
+Scenario: Reproducible build with version pinning
+  Given project checked out at commit abc123 from 6 months ago
+  And CMakeLists.txt specifies AES3_2009_VERSION="1.2.3"
+  When developer runs CMake configure and build
+  Then AES3-2009 v1.2.3 shall be fetched (exact tag)
+  And build output shall be bit-identical to original build
+  And no newer AES3 versions shall be used (reproducible builds)
+```
+
+**Dependencies**:
+- **External**: All external repositories must provide `version.txt` and follow semver tagging
+- **Internal**: CMake version checking infrastructure
+
+**Verification Method**: Test (version compatibility tests, breaking change detection, reproducible build validation)
+
+---
+
 ## Status: Phase 02 In Progress
 
 ✅ **Completed**:
@@ -1598,44 +2359,61 @@ Scenario: Three-vendor cascaded synchronization chain
   - REQ-F-SYNC-001: DARS-Referenced Synchronization (±5% phase tolerance, multi-rate lock)
   - REQ-F-SYNC-002: Audio-Input-Referenced Synchronization (embedded clock lock, cascaded error tracking)
   - REQ-F-SYNC-003: Sample Rate Conversion Support (ASRC for asynchronous inputs)
+  - *(1 more synchronization requirement planned)*
 - **Section 3.3: Hardware Abstraction Layer Requirements** (4 requirements):
   - REQ-F-HAL-001: Audio Interface Abstraction (audio_hal_t, frame tx/rx, sample rate config)
   - REQ-F-HAL-002: Timing Interface Abstraction (timing_hal_t, nanosecond timestamps, monotonic time)
   - REQ-F-HAL-003: Synchronization Interface Abstraction (sync_hal_t, lock control, phase adjustment, reference selection)
   - REQ-F-HAL-004: GPIO and External Signal Interface Abstraction (gpio_hal_t, video sync, GPS 1PPS, edge timestamps)
-  - *(2-3 more HAL requirements planned)*
+  - *(3 more HAL requirements planned)*
 - **Section 3.4: Conformance Testing Requirements** (2 requirements):
   - REQ-F-CONFORM-001: AES-11 Section 5 Conformance Test Suite (28 automated tests, certification package)
   - REQ-F-CONFORM-002: Interoperability Testing Framework (multi-vendor validation, cascade chains)
-  - *(4-6 more conformance requirements planned)*
+  - *(6 more conformance requirements planned)*
+- **Section 3.5: Error Handling and Diagnostics Requirements** (3 requirements):
+  - REQ-F-ERROR-001: Error Detection and Classification Framework (SFMEA integration, error taxonomy, severity levels)
+  - REQ-F-ERROR-002: Automatic Error Recovery Strategies (reference fallback, state reset, MTBF optimization)
+  - REQ-F-ERROR-003: Diagnostic Interface and Event Logging (structured logging, circular buffers, runtime config)
+  - *(3 more error handling requirements planned)*
+- **Section 3.6: Integration Requirements** (4 requirements):
+  - REQ-F-INTEG-001: AES3-2009 Repository Integration (CMake FetchContent, frame format reuse)
+  - REQ-F-INTEG-002: AES5-2018 Repository Integration (sampling rate definitions, no hardcoded values)
+  - REQ-F-INTEG-003: Cross-Repository Namespace Isolation (AES::<Standard>::<Version> hierarchy)
+  - REQ-F-INTEG-004: CMake Dependency Version Management (semantic versioning, breaking change detection)
 
-**Total Functional Requirements Completed: 16/40 (40% complete)**
+**Total Functional Requirements Completed: 23/40 (58% complete)**
 
 ⏳ **In Progress**:
-- Expanding remaining functional requirements with complete 8-dimension elicitation framework
+- Completing remaining functional requirements in Sections 3.1-3.6
 - Planning non-functional requirements (REQ-NF-xxx) for Section 4
 
 📋 **Next Steps**:
 1. Complete remaining functional requirements (REQ-F-xxx):
-   - 1-2 more DARS protocol requirements (channel status processing, date/time distribution)
-   - 2-3 more HAL requirements (memory management, platform capabilities, error handling)
-   - 4-6 more conformance requirements (Section 6 clock jitter tests, regression suite, certification tools)
-   - 4-6 error handling requirements (error taxonomy, recovery strategies, diagnostics, logging)
-   - 3-4 integration requirements (AES3/AES5 repos, build system, dependency management)
-2. Develop non-functional requirements (REQ-NF-xxx) from StR-PERF-xxx and StR-REL-xxx
-3. Create use cases (UC-xxx) for key scenarios
-4. Develop user stories (STORY-xxx) with Given-When-Then acceptance criteria
-5. Build complete traceability matrix (StR → REQ → UC → STORY)
+   - 1 more DARS protocol requirement (date/time distribution via channel status)
+   - 1 more synchronization requirement (cascaded system support, error propagation limits)
+   - 3 more HAL requirements (memory management, platform capabilities, thread safety)
+   - 6 more conformance requirements (Section 6 clock jitter tests, regression suite, certification tools)
+   - 3 more error handling requirements (fault tolerance, error notification, health monitoring)
+2. Develop 20 non-functional requirements (REQ-NF-xxx) from StR-PERF-xxx, StR-REL-xxx, StR-SEC-xxx
+3. Complete SyRS Sections 5-9 (Constraints, Interfaces, Success Criteria, Assumptions, Risks)
+4. Create 10-12 use cases (UC-xxx) for key scenarios
+5. Develop 20-30 user stories (STORY-xxx) with Given-When-Then acceptance criteria
+6. Build complete traceability matrix (StR → REQ → UC → STORY)
+7. Phase 02 quality gate review and stakeholder approval
 
 **Quality Metrics Achieved**:
-- ✅ Every requirement has unique ID with priority (P0/P1/P2/P3)
+- ✅ 23 requirements with unique ID and priority (P0/P1/P2/P3)
 - ✅ Every requirement traces to stakeholder requirements (StR-xxx)
 - ✅ Every requirement references specific AES-11-2009 sections
 - ✅ Every requirement includes complete 8-dimension elicitation (functional, data, interface, boundaries, errors, temporal, performance, acceptance)
 - ✅ Every requirement has 3-4 Gherkin Given-When-Then scenarios
-- ✅ **64+ Gherkin acceptance criteria scenarios** created (4 per requirement × 16 requirements)
+- ✅ **90+ Gherkin acceptance criteria scenarios** created (4 per requirement × 23 requirements)
 - ✅ All quantitative metrics extracted directly from AES-11-2009 (no assumptions)
 - ✅ All requirements specify verification method (Test/Inspection/Analysis/Demo)
+- ✅ Complete HAL interface definitions (C structs, enums, callbacks)
+- ✅ Error taxonomy with SFMEA integration (IEEE 1633-2016)
+- ✅ CMake integration specifications for external repositories (AES3, AES5)
+- ✅ Namespace isolation strategy (AES::<Standard>::<Version>)
 
 ---
 
