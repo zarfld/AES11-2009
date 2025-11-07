@@ -6209,9 +6209,441 @@ Coverage enforcement:
 
 ---
 
+## 8. Assumptions and Dependencies
+
+This section documents the assumptions made during requirements specification and identifies external dependencies that affect system implementation and operation per ISO/IEC/IEEE 29148:2018 Section 5.2.8.
+
+### 8.1 Operating Environment Assumptions
+
+#### 8.1.1 Target Platforms
+
+**Supported Operating Systems**:
+
+| Operating System | Version | Architecture | Status |
+|-----------------|---------|--------------|--------|
+| **Windows** | Windows 10, 11, Server 2019+ | x64, ARM64 | ✅ Primary |
+| **Linux** | Ubuntu 20.04+, RHEL 8+, Debian 11+ | x64, ARM64 | ✅ Primary |
+| **macOS** | macOS 11 (Big Sur) and later | x64, ARM64 (M1/M2) | ✅ Primary |
+| **RTOS** | FreeRTOS, VxWorks, QNX | ARM Cortex-M4/M7, x86 | ✅ Secondary |
+
+**Platform Assumptions**:
+
+- System has access to high-resolution timers (≤1 μs precision)
+- Operating system provides monotonic clock source
+- Kernel scheduling supports real-time priorities (for RTOS and real-time Linux)
+- Memory management unit (MMU) available for virtual memory (desktop platforms)
+- Multi-threading support with POSIX threads or equivalent
+
+#### 8.1.2 Hardware Requirements
+
+**Minimum Hardware Configuration**:
+
+| Component | Minimum | Recommended | Critical Components |
+|-----------|---------|-------------|---------------------|
+| **CPU** | Dual-core 1.5 GHz | Quad-core 2.5 GHz | Multi-core for parallel processing |
+| **RAM** | 2 GB | 4 GB | ≥512 MB per DARS instance |
+| **Storage** | 100 MB | 500 MB | SSD for logging |
+| **Audio Interface** | 48 kHz, 16-bit | 192 kHz, 24-bit | Professional audio hardware |
+| **Network** | 100 Mbps Ethernet | 1 Gbps Ethernet | For AES67 integration (optional) |
+
+**Hardware Assumptions**:
+
+- Audio hardware supports AES3 digital audio interface
+- System has access to audio clock with sufficient stability
+- Hardware supports DMA for audio buffer transfers (for performance)
+- GPIO or equivalent interface available for external sync signals (video, GPS 1PPS)
+- CPU instruction set includes FPU for floating-point calculations
+
+#### 8.1.3 Timing and Synchronization Hardware
+
+**Required Timing Sources** (at least one):
+
+| Timing Source | Accuracy | Stability | Use Case |
+|--------------|----------|-----------|----------|
+| **Internal Crystal Oscillator** | ±50 ppm | Standard | Grade 2 DARS, standalone operation |
+| **GPSDO (GPS-Disciplined Oscillator)** | ±1 ppb | High | Grade 1 DARS, UTC synchronization |
+| **Video Sync Generator** | Depends on video system | Medium | Video-referenced DARS, broadcast |
+| **External Frequency Reference** | ±1 ppm | High | Grade 1 DARS, lab/studio sync |
+
+**Timing Assumptions**:
+
+- At least one timing source available for DARS generation
+- Timing source remains stable during operation (no sudden frequency jumps)
+- GPS receiver has clear sky view (for GPSDO-based systems)
+- Video sync signal meets SMPTE specifications (for video-referenced systems)
+
+### 8.2 Software Dependencies
+
+#### 8.2.1 External Repository Dependencies
+
+**AES Standards Integration** (via Git submodules or package manager):
+
+| Repository | Version | Purpose | Status |
+|-----------|---------|---------|--------|
+| **AES3-2009** | v1.0.0+ | Digital audio interface frame format | ✅ Available |
+| **AES5-2018** | v1.0.0+ | Preferred sampling frequencies | ✅ Available |
+| **IEEE_1588_2019** | v0.9.0+ | PTPv2 (optional, alternative sync) | 🔄 In Development |
+
+**Repository URLs**:
+
+- AES3-2009: `https://github.com/zarfld/AES3-2009.git`
+- AES5-2018: `https://github.com/zarfld/AES5-2018.git`
+- IEEE_1588_2019: `https://github.com/zarfld/IEEE_1588_2019.git` (optional)
+
+**Integration Assumptions**:
+
+- External repositories maintain stable APIs
+- Version compatibility managed via CMake/Conan
+- Namespace isolation prevents conflicts (AES::AES3::_2009, AES::AES5::_2018)
+- Breaking changes in external repos trigger version pinning
+
+#### 8.2.2 Build System Dependencies
+
+**Required Build Tools**:
+
+| Tool | Minimum Version | Purpose |
+|------|----------------|---------|
+| **CMake** | 3.20+ | Build system generator |
+| **C Compiler** | C11 compliant | C implementation (HAL, low-level) |
+| **C++ Compiler** | C++17 compliant | C++ implementation (Standards layer) |
+| **Git** | 2.30+ | Version control, submodules |
+
+**Compiler Support**:
+
+| Compiler | Minimum Version | Platforms |
+|----------|----------------|-----------|
+| **GCC** | 9.0+ | Linux, Windows (MinGW), macOS |
+| **Clang** | 10.0+ | Linux, macOS, Windows |
+| **MSVC** | 19.20+ (VS 2019) | Windows |
+
+**Build System Assumptions**:
+
+- CMake FetchContent or Conan package manager available
+- Compiler supports C11 and C++17 standards
+- Build environment has internet access for dependency fetching (initial build)
+- Cross-compilation toolchains available for embedded targets
+
+#### 8.2.3 Runtime Library Dependencies
+
+**Required System Libraries**:
+
+| Library | Purpose | Availability |
+|---------|---------|--------------|
+| **pthread** (POSIX) | Threading, mutex, condition variables | Linux, macOS, RTOS |
+| **Windows Threading API** | Threading on Windows | Windows |
+| **C Standard Library** | Standard C functions (libc, libm) | All platforms |
+| **C++ Standard Library** | STL containers, algorithms | All platforms |
+
+**Optional Runtime Libraries**:
+
+| Library | Purpose | Requirement |
+|---------|---------|-------------|
+| **ALSA** | Linux audio interface | Linux only |
+| **CoreAudio** | macOS audio interface | macOS only |
+| **ASIO SDK** | Windows professional audio | Windows (optional) |
+| **JACK** | Professional audio routing | Linux/macOS (optional) |
+
+**Runtime Assumptions**:
+
+- System libraries provide POSIX-compliant threading on Unix-like systems
+- Audio drivers installed and properly configured
+- Real-time kernel extensions available (for Linux real-time performance)
+- No conflicting audio applications monopolizing hardware
+
+#### 8.2.4 Development and Testing Tools
+
+**Required for Development**:
+
+| Tool Category | Tools | Purpose |
+|--------------|-------|---------|
+| **Unit Testing** | GoogleTest, Unity, pytest | Automated unit tests |
+| **Static Analysis** | clang-tidy, cppcheck, Coverity | Code quality, security |
+| **Code Coverage** | gcov, lcov, Codecov | Coverage measurement |
+| **Documentation** | Doxygen, Markdown | API documentation |
+| **Version Control** | Git, GitHub | Source code management |
+
+**Optional Development Tools**:
+
+| Tool | Purpose | Phase |
+|------|---------|-------|
+| **Valgrind** | Memory leak detection | Phase 05 (Implementation) |
+| **GDB/LLDB** | Debugging | Phase 05, 06, 07 |
+| **Tracy Profiler** | Performance profiling | Phase 07 (V&V) |
+| **Oscilloscope/Logic Analyzer** | Hardware timing validation | Phase 07 (V&V) |
+
+### 8.3 Standards and Specifications Dependencies
+
+#### 8.3.1 Audio Engineering Society (AES) Standards
+
+**Primary Dependency**:
+
+| Standard | Version | Purpose | Compliance |
+|----------|---------|---------|------------|
+| **AES-11-2009 (R2014)** | 2009 reaffirmed 2014 | Digital Audio Reference Signals | ✅ 100% |
+
+**Supporting AES Standards**:
+
+| Standard | Version | Purpose | Integration |
+|----------|---------|---------|-------------|
+| **AES3-2009** | 2009 | Digital audio interface | External repo |
+| **AES5-2018** | 2018 | Preferred sampling frequencies | External repo |
+| **AES67-2018** | 2018 | Audio-over-IP (optional) | Future integration |
+| **AES70-2021** | 2021 | Device control (OCA) (optional) | Future integration |
+
+**Standards Assumptions**:
+
+- AES-11-2009 specifications remain stable (reaffirmed 2014, next review ~2024)
+- Access to authoritative AES standards documents for compliance verification
+- Standards references via MCP-Server during development (no copyright reproduction)
+- Future AES standard updates handled via maintenance releases
+
+#### 8.3.2 IEEE and ISO/IEC Standards
+
+**Requirements Engineering**:
+
+| Standard | Version | Purpose | Compliance |
+|----------|---------|---------|------------|
+| **ISO/IEC/IEEE 29148:2018** | 2018 | Requirements engineering | ✅ 100% |
+| **IEEE 1012-2016** | 2016 | Verification and validation | ✅ 100% |
+| **IEEE 1633-2016** | 2016 | Software reliability engineering | ✅ 100% |
+| **ISO/IEC 25010:2011** | 2011 | System and software quality models | ✅ 100% |
+
+**Architecture and Design** (Phase 03-04):
+
+| Standard | Version | Purpose | Phase |
+|----------|---------|---------|-------|
+| **ISO/IEC/IEEE 42010:2011** | 2011 | Architecture description | Phase 03 |
+| **IEEE 1016-2009** | 2009 | Software design descriptions | Phase 04 |
+
+**Optional Integration Standards**:
+
+| Standard | Version | Purpose | Status |
+|----------|---------|---------|--------|
+| **IEEE 1588-2019** | 2019 | Precision Time Protocol (PTPv2) | 🔄 In Development |
+
+#### 8.3.3 Video Synchronization Standards (Optional)
+
+**For Video-Referenced DARS**:
+
+| Standard | Purpose | Compliance |
+|----------|---------|------------|
+| **SMPTE 318M-1999** | Video/audio sync (59.94/50 Hz) | ✅ If video sync used |
+| **SMPTE RP168** | Vertical interval switching point | ✅ If video sync used |
+
+**Video Sync Assumptions**:
+
+- Video sync signal available if video-referenced DARS required
+- Video sync meets SMPTE specifications (amplitude, timing, jitter)
+- Video frame rates supported: 23.976, 24, 25, 29.97, 30, 50, 59.94, 60 fps
+
+### 8.4 Operational Assumptions
+
+#### 8.4.1 User Expertise
+
+**Required User Knowledge**:
+
+| User Role | Knowledge Requirements |
+|-----------|----------------------|
+| **System Integrator** | Audio engineering, AES-11 standards, digital audio networking |
+| **Operator** | Basic audio engineering, DARS concepts, system monitoring |
+| **Maintenance Personnel** | Software troubleshooting, log analysis, configuration management |
+
+**Training Assumptions**:
+
+- Users receive training on AES-11 DARS concepts before deployment
+- Documentation provided in English (localization future enhancement)
+- Technical support available during initial deployment
+- User manuals cover common operational scenarios
+
+#### 8.4.2 Deployment Environment
+
+**Network Assumptions** (for networked deployments):
+
+- Ethernet network available (100 Mbps minimum, 1 Gbps recommended)
+- Network switches support multicast (for AES67 integration, if used)
+- Network latency <10 ms for multi-device synchronization
+- Firewall permits required audio protocols
+
+**Physical Environment**:
+
+| Parameter | Requirement | Rationale |
+|-----------|------------|-----------|
+| **Temperature** | 0°C to 40°C operating | Professional audio equipment range |
+| **Humidity** | 10% to 90% non-condensing | Electronics safe operation |
+| **Electromagnetic Interference** | Low EMI environment | Audio quality preservation |
+| **Power** | Stable AC power (UPS recommended) | Continuous operation, no power interrupts |
+
+**Operational Assumptions**:
+
+- System operates in temperature-controlled studio/broadcast environment
+- No extreme vibration or shock during operation
+- Adequate ventilation for cooling (if embedded in equipment rack)
+- Grounded power distribution to minimize ground loops
+
+#### 8.4.3 Maintenance and Support
+
+**Maintenance Assumptions**:
+
+- Software updates deployed during scheduled maintenance windows
+- Configuration backups performed regularly
+- Log files monitored for anomalies
+- Periodic compliance testing (e.g., annually) for certified systems
+
+**Support Infrastructure**:
+
+| Support Element | Availability |
+|----------------|--------------|
+| **Documentation** | User manual, API docs, troubleshooting guide |
+| **Technical Support** | Email, issue tracker (GitHub Issues) |
+| **Software Updates** | GitHub releases, semantic versioning |
+| **Community** | Developer forums, mailing lists |
+
+### 8.5 Constraints and Limitations
+
+#### 8.5.1 Technical Constraints
+
+**Performance Constraints**:
+
+| Constraint | Limit | Rationale |
+|-----------|-------|-----------|
+| **Maximum DARS Instances** | 8 per system | Resource management, scalability testing limit |
+| **Maximum Sample Rate** | 192 kHz | AES5-2018 preferred rate, hardware limitations |
+| **Minimum Latency** | <1 ms end-to-end | Real-time audio requirement |
+| **Clock Jitter** | <10 ns peak-to-peak | AES-11-2009 Section 6 jitter requirements |
+
+**Platform Constraints**:
+
+- Embedded systems limited to single DARS instance (resource constraints)
+- Windows < Windows 10 not supported (API requirements)
+- macOS < Big Sur not supported (ARM64 support, API changes)
+- 32-bit platforms not supported (future-proofing, testing resources)
+
+#### 8.5.2 Licensing and Compliance Constraints
+
+**Open Source Licensing**:
+
+- Project uses MIT or Apache 2.0 license (to be determined in Phase 01)
+- External dependencies use compatible open-source licenses
+- No GPL dependencies that would force GPL licensing (copyleft avoidance)
+
+**Standards Access**:
+
+- AES standards under copyright (AES Audio Engineering Society)
+- IEEE standards under copyright (IEEE)
+- SMPTE standards under copyright (SMPTE)
+- Implementation based on specification understanding, no copyrighted content reproduction
+
+**Compliance Constraints**:
+
+- Certification requires formal AES-11 compliance testing
+- Compliance testing equipment required (frequency counters, jitter analyzers)
+- Certification evidence package must be generated per REQ-F-CONFORM-005
+
+#### 8.5.3 Resource Constraints
+
+**Development Resources**:
+
+| Resource Type | Constraint |
+|--------------|-----------|
+| **Development Team** | Small team (1-5 developers) |
+| **Budget** | Limited budget for test equipment |
+| **Timeline** | 9-phase lifecycle (~12 months) |
+| **Test Equipment** | Access to professional audio test equipment |
+
+**Testing Resources**:
+
+- Limited access to all target hardware platforms
+- Automated testing reduces manual testing burden
+- Virtual machines used for multi-platform testing where possible
+- Hardware-in-the-loop testing for embedded targets
+
+### 8.6 Dependency Management Strategy
+
+#### 8.6.1 External Repository Versioning
+
+**Semantic Versioning** (SemVer 2.0.0):
+
+- External repositories follow semantic versioning: MAJOR.MINOR.PATCH
+- **MAJOR**: Incompatible API changes (requires AES-11 code updates)
+- **MINOR**: Backward-compatible functionality additions
+- **PATCH**: Backward-compatible bug fixes
+
+**Version Pinning Strategy**:
+
+```cmake
+# CMakeLists.txt - External repository version management
+FetchContent_Declare(
+  aes3_2009
+  GIT_REPOSITORY https://github.com/zarfld/AES3-2009.git
+  GIT_TAG        v1.0.0  # Pin to specific version
+)
+
+FetchContent_Declare(
+  aes5_2018
+  GIT_REPOSITORY https://github.com/zarfld/AES5-2018.git
+  GIT_TAG        v1.0.0  # Pin to specific version
+)
+```
+
+**Update Policy**:
+
+- PATCH updates: Automatic (CI/CD dependency bot)
+- MINOR updates: Manual review, regression testing
+- MAJOR updates: Full impact analysis, design review, integration testing
+
+#### 8.6.2 Dependency Isolation
+
+**Namespace Isolation**:
+
+- AES-11 implementation: `AES::AES11::_2009`
+- AES3 dependency: `AES::AES3::_2009`
+- AES5 dependency: `AES::AES5::_2018`
+- No namespace conflicts, clear dependency boundaries
+
+**Interface Stability**:
+
+- HAL interfaces remain stable across AES-11 updates
+- Service layer adapts to platform changes, isolating Standards layer
+- Standards layer depends only on well-defined AES3/AES5 interfaces
+
+### 8.7 Risk Mitigation for Dependencies
+
+#### 8.7.1 Dependency Risk Assessment
+
+| Dependency | Risk | Probability | Impact | Mitigation |
+|-----------|------|-------------|--------|------------|
+| **AES3-2009 repo unavailable** | External repo issue | Low | High | Version pinning, local mirror |
+| **AES5-2018 repo unavailable** | External repo issue | Low | High | Version pinning, local mirror |
+| **Compiler update breaks build** | Toolchain change | Medium | Medium | CI/CD testing, version constraints |
+| **OS update breaks audio drivers** | Platform change | Medium | High | Driver abstraction, HAL isolation |
+| **Standards update changes requirements** | AES standards revision | Low | High | Version tracking, maintenance plan |
+
+#### 8.7.2 Contingency Plans
+
+**External Repository Contingency**:
+
+- Maintain local mirrors of critical external repositories
+- Archive released versions in project repository (Git LFS)
+- Document build process without external internet access
+
+**Platform Compatibility Contingency**:
+
+- Maintain support for N-1 OS versions during transition periods
+- Gradual deprecation policy (6-12 months notice)
+- Fallback to generic platform APIs if vendor-specific APIs unavailable
+
+**Standards Compliance Contingency**:
+
+- Monitor AES/IEEE/SMPTE standards update schedules
+- Participate in standards working groups (if possible)
+- Design for extensibility to accommodate future standards updates
+
+---
+
 ## Status: Phase 02 In Progress
 
 ✅ **Completed**:
+
 - SyRS document structure (ISO/IEC/IEEE 29148:2018 compliant)
 - Section 1: Introduction (Purpose, Scope, Definitions, References, Overview)
 - Section 2: System Overview (Context, Capabilities, User Classes, Operating Environment, Assumptions/Dependencies)
@@ -6246,16 +6678,18 @@ Coverage enforcement:
 - **Section 3.6: Integration Requirements** (4 requirements):
   - REQ-F-INTEG-001: AES3-2009 Repository Integration (CMake FetchContent, frame format reuse)
   - REQ-F-INTEG-002: AES5-2018 Repository Integration (sampling rate definitions, no hardcoded values)
-  - REQ-F-INTEG-003: Cross-Repository Namespace Isolation (AES::<Standard>::<Version> hierarchy)
+  - REQ-F-INTEG-003: Cross-Repository Namespace Isolation (AES::\<Standard\>::\<Version\> hierarchy)
   - REQ-F-INTEG-004: CMake Dependency Version Management (semantic versioning, breaking change detection)
 
-**Total Functional Requirements Completed: 23/40 (58% complete)**
+**Total Functional Requirements Completed**: 23/40 (58% complete)
 
 ⏳ **In Progress**:
+
 - Completing remaining functional requirements in Sections 3.1-3.6
 - Planning non-functional requirements (REQ-NF-xxx) for Section 4
 
 📋 **Next Steps**:
+
 1. Complete remaining functional requirements (REQ-F-xxx):
    - 1 more DARS protocol requirement (date/time distribution via channel status)
    - 1 more synchronization requirement (cascaded system support, error propagation limits)
@@ -6270,6 +6704,7 @@ Coverage enforcement:
 7. Phase 02 quality gate review and stakeholder approval
 
 **Quality Metrics Achieved**:
+
 - ✅ 23 requirements with unique ID and priority (P0/P1/P2/P3)
 - ✅ Every requirement traces to stakeholder requirements (StR-xxx)
 - ✅ Every requirement references specific AES-11-2009 sections
@@ -6281,7 +6716,7 @@ Coverage enforcement:
 - ✅ Complete HAL interface definitions (C structs, enums, callbacks)
 - ✅ Error taxonomy with SFMEA integration (IEEE 1633-2016)
 - ✅ CMake integration specifications for external repositories (AES3, AES5)
-- ✅ Namespace isolation strategy (AES::<Standard>::<Version>)
+- ✅ Namespace isolation strategy (AES::\<Standard\>::\<Version\>)
 
 ---
 
