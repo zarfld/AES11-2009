@@ -2,11 +2,11 @@
 
 ## Summary
 
-- Requirements total: 68
-- Requirements linked (≥1 element): 68
+- Requirements total: 70
+- Requirements linked (≥1 element): 70
 - Overall Coverage: 100.0%
-- Functional Coverage: 42/42 (100.0%)
-- Non-Functional Coverage: 26/26 (100.0%)
+- Functional Coverage: 43/43 (100.0%)
+- Non-Functional Coverage: 27/27 (100.0%)
 
 ### Legend
 - ADR: Architecture Decision Record
@@ -20,7 +20,8 @@
 | Requirement | ADRs | Architecture Components | Design Components | Design Interfaces | Design Data Models | Scenarios | Tests | All Linked |
 |-------------|------|-------------------------|-------------------|-------------------|--------------------|-----------|-------|-----------|
 | REQ-AUTH-F-001 | ADR-001 |  |  |  |  |  |  | ADR-001 |
-| REQ-F-001 | ADR-001, ADR-002, ADR-003, ADR-004, ADR-005 | ARC-C-001 |  |  |  | QA-SC-001, QA-SC-002, QA-SC-003, QA-SC-010 |  | ADR-001, ADR-002, ADR-003, ADR-004, ADR-005, ARC-C-001, QA-SC-001, QA-SC-002, QA-SC-003, QA-SC-010 |
+| REQ-F-001 | ADR-001, ADR-002, ADR-003, ADR-004, ADR-005 | ARC-C-001 | DES-C-001 |  |  | QA-SC-001, QA-SC-002, QA-SC-003, QA-SC-010 | TEST-DARS-STATE-001 | ADR-001, ADR-002, ADR-003, ADR-004, ADR-005, ARC-C-001, DES-C-001, QA-SC-001, QA-SC-002, QA-SC-003, QA-SC-010, TEST-DARS-STATE-001 |
+| REQ-F-002 |  |  | DES-C-002 |  |  |  | TEST-SYNC-SELECT-001 | DES-C-002, TEST-SYNC-SELECT-001 |
 | REQ-F-010 | ADR-002, ADR-003, ADR-004 | ARC-C-002, ARC-C-003, ARC-C-007, ARC-C-010 |  |  |  | QA-SC-001, QA-SC-002, QA-SC-003 | TEST-AVAIL-FAILOVER-001, TEST-PERF-001, TEST-SEC-LOGIN-001 | ADR-002, ADR-003, ADR-004, ARC-C-002, ARC-C-003, ARC-C-007, ARC-C-010, QA-SC-001, QA-SC-002, QA-SC-003, TEST-AVAIL-FAILOVER-001, TEST-PERF-001, TEST-SEC-LOGIN-001 |
 | REQ-F-CONFORM-001 | ADR-001, ADR-002, ADR-003, ADR-004, ADR-005, ADR-ARCH-001 | ARC-C-001, ARC-C-002, ARC-C-003, ARC-C-004, ARC-C-005, ARC-C-006, ARC-C-007, ARC-C-008, ARC-C-009 |  |  |  |  | TEST-DARS-001 | ADR-001, ADR-002, ADR-003, ADR-004, ADR-005, ADR-ARCH-001, ARC-C-001, ARC-C-002, ARC-C-003, ARC-C-004, ARC-C-005, ARC-C-006, ARC-C-007, ARC-C-008, ARC-C-009, TEST-DARS-001 |
 | REQ-F-CONFORM-002 | ADR-ARCH-001 |  |  |  |  |  | TEST-DARS-001 | ADR-ARCH-001, TEST-DARS-001 |
@@ -92,3 +93,4 @@
 | REQ-NF-SEC-002 | ADR-ARCH-001 |  |  |  |  |  | TEST-DARS-001 | ADR-ARCH-001, TEST-DARS-001 |
 | REQ-NF-SEC-003 | ADR-001, ADR-002, ADR-003, ADR-004, ADR-005, ADR-ARCH-001 | ARC-C-001, ARC-C-002, ARC-C-003, ARC-C-004, ARC-C-005, ARC-C-006, ARC-C-007, ARC-C-008, ARC-C-009 |  |  |  |  | TEST-DARS-001 | ADR-001, ADR-002, ADR-003, ADR-004, ADR-005, ADR-ARCH-001, ARC-C-001, ARC-C-002, ARC-C-003, ARC-C-004, ARC-C-005, ARC-C-006, ARC-C-007, ARC-C-008, ARC-C-009, TEST-DARS-001 |
 | REQ-NF-SEC-004 | ADR-ARCH-001 |  |  |  |  |  | TEST-DARS-001 | ADR-ARCH-001, TEST-DARS-001 |
+| REQ-NF-TIMING-001 |  |  | DES-C-003 |  |  |  | TEST-DM-TIMINGWIN-, TEST-DM-TIMINGWIN-001, TEST-DM-TIMINGWIN-002 | DES-C-003, TEST-DM-TIMINGWIN-, TEST-DM-TIMINGWIN-001, TEST-DM-TIMINGWIN-002 |
