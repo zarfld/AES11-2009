@@ -4,6 +4,7 @@ add_executable(aes11_tests
   test_timing_window_processor.cpp
   test_dars_protocol.cpp
   test_capture_range.cpp
+  test_phase_tolerance.cpp
 )
 
 target_link_libraries(aes11_tests

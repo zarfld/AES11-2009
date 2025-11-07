@@ -780,7 +780,7 @@ Scenario: Lock acquisition time measurement
 
 ---
 
-#### REQ-F-DARS-004: Phase Relationship Tolerances
+#### REQ-F-DARS-004: Phase Relationship Tolerances [Design: DES-DARS-PHASE] [Tests: TEST-DARS-PHASE-001, TEST-DARS-PHASE-002, TEST-DARS-PHASE-003]
 
 - **Trace to**: StR-PERF-003, StR-FUNC-001
 - **Priority**: Critical (P0)

@@ -85,6 +85,13 @@ struct TimingSource {
 4. Validate DARS core lock before confirming selection.
 5. Emit event for change; update SyncStatus.
 
+### 6.1.1 Phase Tolerance Integration (DES-DARS-PHASE)
+
+- Use `PhaseTolerance::within_output(sr, |offset_us|)` as a predicate to maintain output phase within ±5% (REQ-F-DARS-004).
+- Use `PhaseTolerance::within_input(sr, |offset_us|)` to accept input phase up to ±25% (REQ-F-DARS-004).
+- When `|offset_us|` crosses `output_warning_threshold_us(sr)` persistently, trigger proactive realignment without dropping lock.
+- Expose counters for phase violations to support monitoring (ties to REQ-F-DARS-004 error handling table).
+
 ### 6.2 Degradation Detection
 
 - If jitter metrics exceed threshold OR stability drops > tolerance for N consecutive polls → mark `degraded=true` and notify conformance subsystem.
@@ -128,6 +135,8 @@ struct TimingSource {
 - TEST-SYNC-DEGRADE-001: Mark degraded on sustained jitter spike.
 - TEST-SYNC-HOLDOVER-001: Correct drift during holdover within ppm bounds.
 - TEST-SYNC-RESELECT-001: Force reselection chooses next viable source.
+- TEST-SYNC-PHASE-001: Maintain output phase within ±5% at 48 kHz (Verifies: REQ-F-DARS-004).
+- TEST-SYNC-PHASE-002: Accept input phase within ±25% at 48 kHz (Verifies: REQ-F-DARS-004).
 
 ## 12. Open Issues
 
