@@ -73,14 +73,14 @@ struct aes11_dars_info {
 ```
 
 ### Standards Compliance Notes with Copyright Respect
-- **Always reference specific IEEE section and table numbers** when implementing protocol features
-- **NEVER reproduce copyrighted text** from specifications in comments or documentation
-- **Document Milan extensions separately** with AVnu specification references (respecting AVnu copyright)
+- **Always reference specific AES section and table numbers** when implementing protocol features
+- **NEVER reproduce copyrighted text** from specifications in comments or documentation  
+- **Document video sync extensions separately** with SMPTE specification references (respecting SMPTE copyright)
 - **Include timing requirements** with original implementation based on specification understanding
-- **Specify endianness handling** based on IEEE network byte order requirements
-- **Use only factual technical information** that is not subject to copyright (constants, field sizes, etc.)ification sections** when implementing protocol features
-- **Validate all protocol fields** with range checks or masks from the IEEE specification
-- **Every function must have documentation** explaining purpose, parameters, return values, and IEEE context
+- **Specify sample rate handling** for AES5 standard sampling frequencies
+- **Use only factual technical information** that is not subject to copyright (constants, field sizes, etc.)
+- **Validate all protocol fields** with range checks or masks from the AES specification
+- **Every function must have documentation** explaining purpose, parameters, return values, and AES context
 - **No duplicate or redundant implementations** to avoid inconsistencies and confusion
 - **Prevent downgrades** - fix rather than delete existing protocol functionality
 - **No ad-hoc file copies** (e.g., *_fixed, *_new, *_correct) - refactor in place step-by-step
@@ -188,22 +188,21 @@ When implementing AES-11 protocol, reference these authoritative documents via M
 - **DO NOT create derivative works** that reproduce substantial portions of standards
 
 ✅ **PERMITTED USAGE**:
-- **Reference document sections** by number only (e.g., "See IEEE 1722.1-2021, Section 7.2.1")
+- **Reference document sections** by number only (e.g., "See AES-11-2009, Section 5.1.3")
 - **Implement protocol logic** based on understanding of specifications
 - **Create original code** that achieves compliance with standard requirements
 - **Use specification constants and values** in implementation (packet types, field sizes, etc.)
 - **Reference via MCP-Server** for compliance verification during development only
 
-**LICENSE NOTICE**: These documents are referenced for compliance verification and implementation guidance only. All content remains under copyright of respective standards organizations (IEEE, AES, AVnu Alliance). Any reproduction, distribution, or derivative works require proper licensing from copyright holders.
+**LICENSE NOTICE**: These documents are referenced for compliance verification and implementation guidance only. All content remains under copyright of respective standards organizations (AES, SMPTE, IEEE, ITU). Any reproduction, distribution, or derivative works require proper licensing from copyright holders.
 
 **Usage Pattern**: When implementing standards-related code, reference these documents via MCP-Server to ensure:
 - Protocol message format compliance
 - State machine behavior correctness  
 - Timing requirement adherence
-- Milan professional interoperability
-- IEEE specification conformance
 - AES audio format compliance
-- AVnu interoperability requirements
+- Video synchronization compliance
+- DARS timing precision requirements
 
 ### Protocol Compliance Requirements
 ```cpp
@@ -233,9 +232,9 @@ static network_interface_t mock_interface = {
 };
 
 // Test protocol logic without hardware
-void test_avdecc_entity_descriptor_response(void) {
-    avdecc_entity_init(&mock_interface);
-    // ... test protocol behavior
+void test_aes11_dars_generation(void) {
+    aes11_dars_init(&mock_interface);
+    // ... test DARS protocol behavior
 }
 ```
 
@@ -372,10 +371,15 @@ add_executable(standards_protocol_tests
     tests/test_aes11_compliance.c
     tests/test_dars_state_machines.c
     tests/test_video_sync_extensions.c
+    tests/test_aes3_integration.c          # Tests with external AES3
+    tests/test_aes5_integration.c          # Tests with external AES5
 )
 
 target_link_libraries(standards_protocol_tests 
-    aes11_standards 
+    aes11_2009                  # Main AES-11 implementation
+    aes3_2009                   # External AES3 dependency
+    aes5_2018                   # External AES5 dependency  
+    standards_common            # Common test utilities
     GoogleTest
     Unity
 )
@@ -458,44 +462,28 @@ ITU/<Series>/<Standard>/<Version>/
 ```
 lib/Standards/
 ├── AES/                       # Audio Engineering Society (PRIMARY)
-│   ├── AES11/                 # AES11 Digital Audio Reference Signals
-│   │   └── 2009/              # AES11-2009 specification (PRIMARY IMPLEMENTATION)
-│   │       ├── core/          # Core DARS protocol and state machines
-│   │       ├── dars/          # DARS generation and validation
-│   │       ├── sync/          # Synchronization methods and timing
-│   │       ├── video/         # Video reference synchronization
-│   │       └── conformity/    # AES-11 conformance testing
-│   ├── AES3/                  # AES3 Digital Audio Interface (foundation)
-│   │   └── 2009/              # AES3-2009 specification
-│   │       ├── frames/        # AES3 frame format handling
-│   │       ├── preambles/     # X/Y/Z preamble detection
-│   │       ├── channel/       # Channel status processing
-│   │       └── jitter/        # Jitter specifications
-│   ├── AES5/                  # AES5 Sampling Frequencies
-│   │   └── 2018/              # AES5-2018 specification
-│   │       ├── rates/         # Standard sampling frequencies
-│   │       └── ratios/        # Multi-rate relationships
-│   ├── AES67/                 # AES67 audio-over-IP (integration)
-│   │   └── 2018/              # AES67-2018 specification
-│   │       └── sync/          # AES67 synchronization with AES-11
-│   └── AES70/                 # AES70 device control (OCA)
-│       └── 2021/              # AES70-2021 specification
-├── SMPTE/                     # Video standards (referenced by AES-11)
-│   ├── 318M/                  # Video/audio synchronization
-│   │   └── 1999/              # SMPTE 318M-1999
-│   └── RP168/                 # Vertical Interval Switching Point
-├── IEEE/                      # Optional integration standards
-│   └── 1588/                  # PTPv2 (alternative sync method)
-│       └── 2019/              # IEEE 1588-2019
-├── Common/                    # Cross-standard utilities
+│   └── AES11/                 # AES11 Digital Audio Reference Signals (THIS REPO)
+│       └── 2009/              # AES11-2009 specification (PRIMARY IMPLEMENTATION)
+│           ├── core/          # Core DARS protocol and state machines
+│           ├── dars/          # DARS generation and validation
+│           ├── sync/          # Synchronization methods and timing
+│           ├── video/         # Video reference synchronization
+│           └── conformity/    # AES-11 conformance testing
+├── Common/                    # Cross-standard utilities (THIS REPO)
 │   ├── utils/                 # Shared audio utilities
 │   ├── testing/               # Common testing frameworks
 │   ├── interfaces/            # Hardware abstraction interfaces
 │   └── timing/                # Cross-standard timing utilities
-└── Documentation/             # Standards documentation
+└── Documentation/             # Standards documentation (THIS REPO)
     ├── conformance/           # Conformance test specifications
     ├── interop/              # Interoperability guidelines
     └── examples/             # Protocol usage examples
+
+# External Dependencies (Separate Repositories):
+# - AES3-2009: https://github.com/zarfld/AES3-2009.git (READY)
+# - AES5-2018: https://github.com/zarfld/AES5-2018.git (READY)  
+# - IEEE_1588_2019: https://github.com/zarfld/IEEE_1588_2019.git (IN DEVELOPMENT)
+# - SMPTE standards: Future external repositories as needed
 ```
 
 ### Required C++ Namespace Structure Following Generic Pattern
@@ -511,7 +499,7 @@ lib/Standards/
 ```cpp
 // ✅ CORRECT namespace hierarchy following generic pattern
 namespace AES {                 // Organization: Audio Engineering Society (PRIMARY)
-    namespace AES11 {            // Standard: AES11 (Digital Audio Reference Signals)
+    namespace AES11 {            // Standard: AES11 (Digital Audio Reference Signals) - THIS REPO
         namespace _2009 {        // Version: 2009 (year)
             // AES11-2009 DARS implementation - PRIMARY FOCUS
             namespace core {
@@ -540,54 +528,10 @@ namespace AES {                 // Organization: Audio Engineering Society (PRIM
         }
     }
     
-    namespace AES3 {             // Standard: AES3 (Digital Audio Interface foundation)
-        namespace _2009 {        // Version: 2009 (year)
-            // AES3-2009 digital audio interface implementation
-            namespace frames {
-                class AES3Frame;
-                class SubframeParser;
-                class FrameAlignment;
-            }
-            namespace preambles {
-                class PreambleDetector;     // X/Y/Z preamble detection
-                class TimingReferenceExtractor;
-            }
-            namespace channel {
-                class ChannelStatusProcessor;
-                class UserChannelData;
-            }
-            namespace jitter {
-                class JitterSpecification;  // AES3-4 jitter limits
-            }
-        }
-    }
+    // External Dependencies (Separate Repositories):
+    // AES3::_2009 from https://github.com/zarfld/AES3-2009.git (READY)
+    // AES5::_2018 from https://github.com/zarfld/AES5-2018.git (READY)
     
-    namespace AES5 {             // Standard: AES5 (Sampling Frequencies)
-        namespace _2018 {        // Version: 2018 (year)
-            // AES5-2018 sampling frequency standards
-            namespace rates {
-                class StandardSamplingRates;
-                class MultiRateSupport;
-            }
-            namespace ratios {
-                class SampleRateRelationships;
-            }
-        }
-    }
-    
-    namespace AES67 {            // Standard: AES67 (audio-over-IP integration)
-        namespace _2018 {        // Version: 2018 (year)
-            namespace sync {
-                class AES67DARSIntegration;  // Uses AES11 for sync
-            }
-        }
-    }
-    
-    namespace AES70 {            // Standard: AES70 (device control)
-        namespace _2021 {        // Version: 2021 (year)
-            class DeviceControl;
-        }
-    }
 } // namespace AES
 
 namespace SMPTE {               // Organization: SMPTE (Video standards)
@@ -645,7 +589,7 @@ namespace Common {               // Cross-organization utilities
 ```cpp
 // ✅ CORRECT file naming following generic pattern
 
-// AES Examples (PRIMARY FOCUS):
+// AES-11 Implementation (THIS REPO):
 lib/Standards/AES/AES11/2009/core/dars_protocol.hpp                     // AES::AES11::_2009::core
 lib/Standards/AES/AES11/2009/core/dars_protocol.cpp
 lib/Standards/AES/AES11/2009/core/synchronization_manager.hpp           // AES::AES11::_2009::core
@@ -666,28 +610,26 @@ lib/Standards/AES/AES11/2009/video/frame_rate_handler.hpp               // AES::
 lib/Standards/AES/AES11/2009/conformity/aes11_conformance_test.hpp      // AES::AES11::_2009::conformity
 lib/Standards/AES/AES11/2009/conformity/timing_tolerance_test.hpp       // AES::AES11::_2009::conformity
 
-// AES3 Foundation Examples:
-lib/Standards/AES/AES3/2009/frames/aes3_frame.hpp                      // AES::AES3::_2009::frames
-lib/Standards/AES/AES3/2009/frames/aes3_frame.cpp
-lib/Standards/AES/AES3/2009/preambles/preamble_detector.hpp             // AES::AES3::_2009::preambles
-lib/Standards/AES/AES3/2009/channel/channel_status_processor.hpp        // AES::AES3::_2009::channel
-
-// AES5 Sampling Examples:
-lib/Standards/AES/AES5/2018/rates/standard_sampling_rates.hpp           // AES::AES5::_2018::rates
-lib/Standards/AES/AES5/2018/ratios/sample_rate_relationships.hpp        // AES::AES5::_2018::ratios
-
-// SMPTE Video Standards Examples:
-lib/Standards/SMPTE/318M/1999/video_audio_synchronization.hpp           // SMPTE::_318M::_1999
-lib/Standards/SMPTE/RP168/vertical_interval_switching.hpp               // SMPTE::RP168
-
-// IEEE Examples (Optional integration):
-lib/Standards/IEEE/1588/2019/core/ptpv2_protocol.hpp                   // IEEE::_1588::_2019::core
-
-// Common utilities (organization-agnostic):
+// Common utilities (THIS REPO):
 lib/Standards/Common/interfaces/audio_interface.hpp                     // Common::interfaces
 lib/Standards/Common/utils/audio_parser.hpp                            // Common::utils
 lib/Standards/Common/testing/test_framework_base.hpp                    // Common::testing
 lib/Standards/Common/timing/cross_standard_timing.hpp                   // Common::timing
+
+// External Dependencies (Separate Repositories):
+// AES3-2009: https://github.com/zarfld/AES3-2009.git (READY)
+//   - AES::AES3::_2009::frames::AES3Frame
+//   - AES::AES3::_2009::preambles::PreambleDetector
+//   - AES::AES3::_2009::channel::ChannelStatusProcessor
+
+// AES5-2018: https://github.com/zarfld/AES5-2018.git (READY)  
+//   - AES::AES5::_2018::rates::StandardSamplingRates
+//   - AES::AES5::_2018::ratios::SampleRateRelationships
+
+// IEEE_1588_2019: https://github.com/zarfld/IEEE_1588_2019.git (IN DEVELOPMENT)
+//   - IEEE::_1588::_2019::core::PTPv2Protocol
+
+// Future SMPTE repositories as needed for video synchronization
 ```
 
 ### Header Guard and Include Conventions Following Actual Pattern
@@ -734,147 +676,113 @@ class EntityModel {
 
 ### Cross-Standard Reuse and Dependencies
 
-**MANDATORY RULE**: When an IEEE standard references or builds upon another IEEE standard, **ALWAYS reuse the existing implementation** rather than creating redundant code.
+**MANDATORY RULE**: When an AES standard references or builds upon another AES standard, **ALWAYS reuse the existing implementation** rather than creating redundant code.
 
 #### Examples of Required Cross-Standard Reuse:
 
-**IEEE 1722.1 (AVDECC) Dependencies:**
+**AES-11 (DARS) Dependencies:**
 ```cpp
-namespace IEEE {
-namespace _1722_1 {
-namespace _2021 {
-namespace aecp {
+namespace AES {
+namespace AES11 {
+namespace _2009 {
+namespace dars {
 
-// ✅ CORRECT - Reuse IEEE 1722 AVTP implementation
-#include "../../../1722/2016/avtp/avtp_packet.h"
-using IEEE::_1722::_2016::avtp::AVTPPacket;
+// ✅ CORRECT - Reuse AES3 frame processing
+#include "../../../../AES3/2009/frames/aes3_frame.h"
+using AES::AES3::_2009::frames::AES3Frame;
 
-// ✅ CORRECT - Reuse IEEE 802.1AS time synchronization
-#include "../../../802.1/AS/2021/core/time_sync.h"
-using IEEE::_802_1::AS::_2021::core::TimeSynchronization;
+// ✅ CORRECT - Reuse AES5 sampling rates  
+#include "../../../../AES5/2018/rates/standard_sampling_rates.h"
+using AES::AES5::_2018::rates::StandardSamplingRates;
 
-class AEMCommand {
-    // AVDECC commands are transported over AVTP
-    IEEE::_1722::_2016::avtp::AVTPPacket create_avtp_packet() {
-        // Reuse AVTP implementation, don't reimplement
-        return IEEE::_1722::_2016::avtp::AVTPPacket::create_aecp_packet();
+class DARSGenerator {
+    // DARS is transported in AES3 frames
+    AES::AES3::_2009::frames::AES3Frame create_dars_frame() {
+        // Reuse AES3 frame format, don't reimplement
+        return AES::AES3::_2009::frames::AES3Frame::create_dars_frame();
     }
     
-    // AVDECC requires synchronized time from gPTP
-    uint64_t get_synchronized_time() {
-        // Reuse gPTP time, don't reimplement time sync
-        return IEEE::_802_1::AS::_2021::core::TimeSynchronization::get_current_time();
+    // DARS uses AES5 standard sampling rates
+    uint32_t get_sample_rate() {
+        // Reuse AES5 rates, don't hardcode values
+        return AES::AES5::_2018::rates::StandardSamplingRates::get_48khz();
     }
 };
 
-} // namespace aecp
-} // namespace _2021
-} // namespace _1722_1
-} // namespace IEEE
+} // namespace dars
+} // namespace _2009
+} // namespace AES11
+} // namespace AES
 ```
 
-**IEEE 1722 (AVTP) Dependencies:**
+**AES67 (Audio-over-IP) Dependencies:**
 ```cpp
-namespace IEEE {
-namespace _1722 {
-namespace _2016 {
-namespace avtp {
+namespace AES {
+namespace AES67 {
+namespace _2018 {
+namespace sync {
 
-// ✅ CORRECT - Reuse IEEE 802.1AS timing for presentation time
-#include "../../../802.1/AS/2021/core/time_sync.h"
+// ✅ CORRECT - Reuse AES-11 DARS for synchronization
+#include "../../../../AES11/2009/dars/dars_generator.h"
 
-class StreamDataHeader {
-    uint64_t calculate_presentation_time(uint32_t delay_ns) {
-        // Reuse gPTP synchronized time, don't reimplement
-        auto current_time = IEEE::_802_1::AS::_2021::core::TimeSynchronization::get_current_time();
-        return current_time + delay_ns;
+class NetworkSynchronization {
+    uint64_t get_reference_time() {
+        // Reuse AES-11 DARS timing, don't reimplement sync
+        return AES::AES11::_2009::dars::DARSGenerator::get_timing_reference();
     }
 };
 
-} // namespace avtp
-} // namespace _2016
-} // namespace _1722
-} // namespace IEEE
-```
-
-**Milan Extensions Dependencies:**
-```cpp
-namespace AVnu {
-namespace Milan {
-namespace v1_2 {
-namespace discovery {
-
-// ✅ CORRECT - Milan builds on IEEE 1722.1, reuse implementation
-#include "../../../../IEEE/1722.1/2021/adp/discovery_protocol.h"
-#include "../../../../IEEE/1722.1/2021/aem/entity_model.h"
-
-class MilanDiscoveryExtensions : public IEEE::_1722_1::_2021::adp::DiscoveryProtocol {
-    // Milan extends IEEE 1722.1 AVDECC, inherit don't reimplement
-public:
-    // Milan-specific discovery features
-    void discover_milan_devices() {
-        // Use base IEEE 1722.1 discovery, add Milan extensions
-        DiscoveryProtocol::discover_devices();
-        apply_milan_filtering();
-    }
-    
-private:
-    void apply_milan_filtering() {
-        // Milan-specific logic only
-    }
-};
-
-} // namespace discovery
-} // namespace v1_2
-} // namespace Milan
-} // namespace AVnu
+} // namespace sync
+} // namespace _2018
+} // namespace AES67
+} // namespace AES
 ```
 
 #### Forbidden Redundant Implementations:
 ```cpp
-// ❌ WRONG - Reimplementing existing IEEE standards
-namespace IEEE {
-namespace _1722_1 {
-namespace _2021 {
+// ❌ WRONG - Reimplementing existing AES standards
+namespace AES {
+namespace AES11 {
+namespace _2009 {
 
-// DON'T DO THIS - AVTP already exists in IEEE::_1722
-class AVDECCTransportPacket {  // NO - use IEEE::_1722::_2016::avtp::AVTPPacket
-    // ... redundant AVTP implementation
+// DON'T DO THIS - AES3 already exists in AES::AES3
+class CustomAudioFrame {  // NO - use AES::AES3::_2009::frames::AES3Frame
+    // ... redundant AES3 implementation
 };
 
-// DON'T DO THIS - gPTP already exists in IEEE::_802_1::AS
-class AVDECCTimeSync {  // NO - use IEEE::_802_1::AS::_2021::core::TimeSynchronization
-    // ... redundant time sync implementation
+// DON'T DO THIS - AES5 already exists in AES::AES5  
+class CustomSampleRates {  // NO - use AES::AES5::_2018::rates::StandardSamplingRates
+    // ... redundant sampling rate implementation
 };
 
-} // namespace _2021
-} // namespace _1722_1
-} // namespace IEEE
+} // namespace _2009
+} // namespace AES11
+} // namespace AES
 ```
 
 #### Cross-Standard Dependency Rules:
-1. **IEEE Layering Hierarchy** (higher layers depend on lower layers):
-   - **Application Layer**: IEEE 1722.1 (AVDECC)
-   - **Transport Layer**: IEEE 1722 (AVTP) 
-   - **Timing Layer**: IEEE 802.1AS (gPTP)
-   - **Network Layer**: IEEE 802.1Q (VLAN/QoS)
+1. **AES Audio Hierarchy** (higher layers depend on lower layers):
+   - **Application Layer**: AES67 (Audio-over-IP), AES70 (Device Control)
+   - **Synchronization Layer**: AES-11 (DARS) 
+   - **Transport Layer**: AES3 (Digital Audio Interface)
+   - **Foundation Layer**: AES5 (Sampling Frequencies)
 
 2. **Dependency Direction**: 
-   - ✅ **IEEE 1722.1 CAN depend on IEEE 1722 and IEEE 802.1AS**
-   - ✅ **IEEE 1722 CAN depend on IEEE 802.1AS**
-   - ❌ **IEEE 802.1AS CANNOT depend on IEEE 1722 or IEEE 1722.1**
+   - ✅ **AES-11 CAN depend on AES3 and AES5**
+   - ✅ **AES67 CAN depend on AES-11, AES3, and AES5**
+   - ❌ **AES3 CANNOT depend on AES-11 or AES67**
+   - ❌ **AES5 CANNOT depend on higher-layer AES standards**
 
 3. **Extension Standards**:
-   - ✅ **Milan CAN depend on any IEEE standard it extends**
    - ✅ **AES67 CAN depend on IEEE standards it references**
-   - ✅ **Multiple standard versions CAN coexist** (2021, 2016, 2013)
+   - ✅ **Multiple standard versions CAN coexist** (2009, 2018, etc.)
 
 #### CMake Dependencies for Cross-Standard Reuse:
 ```cmake
-# ✅ CORRECT - Respect IEEE layering in CMake dependencies
-target_link_libraries(ieee_1722_1_2021
-    ieee_1722_2016               # AVDECC depends on AVTP
-    ieee_802_1_as_2021          # AVDECC depends on gPTP
+# ✅ CORRECT - Respect AES layering in CMake dependencies
+target_link_libraries(aes11_2009
+    aes3_2009                   # External: AES3 frame format and preambles
+    aes5_2018                   # External: AES5 sampling rates  
     standards_common            # All can use Common utilities
 )
 
@@ -891,8 +799,8 @@ target_link_libraries(avnu_milan_v12
 )
 
 # ❌ WRONG - Violates layering hierarchy
-# target_link_libraries(ieee_802_1_as_2021
-#     ieee_1722_2016            # NO - gPTP cannot depend on AVTP
+# target_link_libraries(aes3_2009
+#     aes11_2009              # NO - AES3 cannot depend on AES-11
 # )
 ```
 
@@ -905,43 +813,45 @@ This approach ensures:
 ### Forbidden Namespace Violations - Corrected
 ```cpp
 // ❌ WRONG - mixing standards with hardware (corrected understanding)
-namespace IEEE {
-namespace intel {              // NO - hardware vendor in IEEE namespace
-    class IntelAVBInterface;
+namespace AES {
+namespace asio {              // NO - hardware vendor in AES namespace
+    class ASIOAudioInterface;
 }
 }
 
-// ❌ WRONG - OS-specific namespaces in IEEE standards
-namespace IEEE {
-namespace windows {            // NO - OS specific in IEEE namespace
-    class WinSockInterface;
+// ❌ WRONG - OS-specific namespaces in AES standards
+namespace AES {
+namespace windows {            // NO - OS specific in AES namespace
+    class WASAPIInterface;
 }
 }
 
-// ❌ WRONG - implementation details in IEEE namespace  
-namespace IEEE {
-namespace _1722_1 {
-namespace _2021 {
-    class WindowsSocketImpl;  // NO - implementation detail, not protocol
+// ❌ WRONG - implementation details in AES namespace  
+namespace AES {
+namespace AES11 {
+namespace _2009 {
+    class WindowsAudioImpl;  // NO - implementation detail, not protocol
 }
 }
 }
 
-// ✅ CORRECT - IEEE standards are pure protocol implementations
-namespace IEEE {
-namespace _1722_1 {
-namespace _2021 {
-namespace aem {
-    class EntityModel;        // YES - pure IEEE 1722.1-2021 protocol
+// ✅ CORRECT - AES standards are pure protocol implementations
+namespace AES {
+namespace AES11 {
+namespace _2009 {
+namespace dars {
+    class DARSGenerator;        // YES - pure AES-11-2009 protocol
 }
 }
 }
 }
 ```
 
-### CMake Integration with Correct Structure
+### CMake Integration with External Dependencies
 ```cmake
-# ✅ CORRECT CMake structure following AES-11 hierarchy
+# ✅ CORRECT CMake structure for AES-11 with external dependencies
+
+# AES-11 Implementation (THIS REPO)
 add_library(aes11_2009 STATIC
     AES/AES11/2009/core/dars_protocol.cpp
     AES/AES11/2009/core/synchronization_manager.cpp
@@ -952,22 +862,7 @@ add_library(aes11_2009 STATIC
     AES/AES11/2009/conformity/aes11_conformance_test.cpp
 )
 
-add_library(aes3_2009 STATIC
-    AES/AES3/2009/frames/aes3_frame.cpp
-    AES/AES3/2009/preambles/preamble_detector.cpp
-    AES/AES3/2009/channel/channel_status_processor.cpp
-)
-
-add_library(aes5_2018 STATIC
-    AES/AES5/2018/rates/standard_sampling_rates.cpp
-    AES/AES5/2018/ratios/sample_rate_relationships.cpp
-)
-
-add_library(smpte_video STATIC
-    SMPTE/318M/1999/video_audio_synchronization.cpp
-    SMPTE/RP168/vertical_interval_switching.cpp
-)
-
+# Common utilities (THIS REPO)
 add_library(standards_common STATIC
     Common/interfaces/audio_interface.cpp
     Common/utils/audio_parser.cpp
@@ -975,12 +870,45 @@ add_library(standards_common STATIC
     Common/timing/cross_standard_timing.cpp
 )
 
-# AES standards libraries dependencies
+# External Dependencies via Git Submodules or Package Manager
+include(FetchContent)
+
+# AES3-2009 External Repository (READY)
+FetchContent_Declare(
+    aes3_2009
+    GIT_REPOSITORY https://github.com/zarfld/AES3-2009.git
+    GIT_TAG        main  # or specific version tag
+)
+FetchContent_MakeAvailable(aes3_2009)
+
+# AES5-2018 External Repository (READY)  
+FetchContent_Declare(
+    aes5_2018
+    GIT_REPOSITORY https://github.com/zarfld/AES5-2018.git
+    GIT_TAG        main  # or specific version tag
+)
+FetchContent_MakeAvailable(aes5_2018)
+
+# IEEE 1588-2019 External Repository (IN DEVELOPMENT - Optional)
+# FetchContent_Declare(
+#     ieee_1588_2019
+#     GIT_REPOSITORY https://github.com/zarfld/IEEE_1588_2019.git
+#     GIT_TAG        main
+# )
+# FetchContent_MakeAvailable(ieee_1588_2019)
+
+# AES-11 depends on external standards
 target_link_libraries(aes11_2009
-    aes3_2009                   # AES-11 depends on AES3 frame format
-    aes5_2018                   # AES-11 depends on AES5 sampling rates
-    smpte_video                 # AES-11 supports video synchronization
-    standards_common            # All can use Common utilities
+    aes3_2009                   # External: AES3 frame format and preambles
+    aes5_2018                   # External: AES5 sampling rates  
+    standards_common            # Internal: Common utilities
+    # ieee_1588_2019            # Optional: PTP alternative sync (when ready)
+)
+
+target_include_directories(aes11_2009 PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/Standards
+    ${aes3_2009_SOURCE_DIR}/include        # External AES3 headers
+    ${aes5_2018_SOURCE_DIR}/include        # External AES5 headers
 )
 ```
 
@@ -988,34 +916,34 @@ target_link_libraries(aes11_2009
 ```cpp
 /**
  * @file conformity_test_framework.h
- * @brief IEEE 802.1AS-2021 Conformity Testing Framework
- * @namespace IEEE::_802_1::AS::_2021::Testing
+ * @brief AES-11-2009 Conformity Testing Framework
+ * @namespace AES::AES11::_2009::Testing
  * 
- * Implements conformity testing according to IEEE 802.1AS-2021 specification.
- * This namespace contains all testing functionality for validating IEEE 802.1AS-2021
+ * Implements conformity testing according to AES-11-2009 specification.
+ * This namespace contains all testing functionality for validating AES-11-2009
  * compliance including state machine behavior, timing requirements, and interoperability.
  * 
- * @see IEEE 802.1AS-2021, Clauses 11.2-11.5 "Conformance requirements"
- * @see IEEE 802.1AS-2021, Annex A "Implementation conformance statement (ICS)"
+ * @see AES-11-2009, Section 5.1 "DARS requirements"
+ * @see AES-11-2009, Section 5.2 "Grade specifications"
  */
 ```
 
 ### Enforcement Rules - Corrected with Copyright Compliance
-1. **IEEE namespaces are top-level** - not wrapped in `openavnu::standards`
-2. **Namespace must match folder structure** exactly (`IEEE::_802_1::AS::_2021` = `IEEE/802.1/AS/2021/`)
-3. **Version numbers use underscores** in namespaces (`_2021`, `_2016`) to avoid conflicts
-4. **Dots become underscores** in namespaces (`802.1` becomes `_802_1`, `1722.1` becomes `_1722_1`)
-5. **No hardware vendors** in IEEE namespace hierarchy
-6. **No OS-specific namespaces** in IEEE standards
-7. **IEEE layering respected** - higher layer standards can depend on lower layers
+1. **AES namespaces are top-level** - not wrapped in other namespace structures
+2. **Namespace must match folder structure** exactly (`AES::AES11::_2009` = `AES/AES11/2009/`)
+3. **Version numbers use underscores** in namespaces (`_2009`, `_2018`) to avoid conflicts
+4. **Standard numbers preserved** in namespaces (`AES11` stays `AES11`, `AES67` stays `AES67`)
+5. **No hardware vendors** in AES namespace hierarchy
+6. **No OS-specific namespaces** in AES standards
+7. **AES layering respected** - higher layer standards can depend on lower layers
 8. **Cross-standard utilities** only in Common namespace
 9. **Conformance testing** isolated in Testing sub-namespaces
 10. **COPYRIGHT COMPLIANCE MANDATORY**:
     - **NEVER reproduce copyrighted specification content** in source code or documentation
-    - **Reference specifications by section number only** (e.g., "IEEE 1722.1-2021, Section 7.2.1")
+    - **Reference specifications by section number only** (e.g., "AES-11-2009, Section 5.1.3")
     - **Implement based on understanding**, not by copying specification text
     - **Use MCP-Server for compliance verification only**, not content reproduction
-    - **Respect all copyright holders**: IEEE, AES, AVnu Alliance, ITU, etc.
+    - **Respect all copyright holders**: AES, SMPTE, IEEE, ITU, etc.
     - **Include copyright disclaimer** in implementations referencing multiple standards
     - **Document original implementation** that achieves compliance through understanding
 
@@ -1038,9 +966,9 @@ target_link_libraries(aes11_2009
  */
 ```
 
-This structure ensures clear separation of IEEE standards versions, prevents architectural violations, and maintains the hardware-agnostic principle while following the actual implementation pattern used in the codebase.
+This structure ensures clear separation of AES standards versions, prevents architectural violations, and maintains the hardware-agnostic principle while following the actual implementation pattern used in the codebase.
 
-This architecture ensures the Standards layer remains pure, testable, reusable across different hardware platforms, and maintains strict IEEE compliance while following OpenAvnu's core development principles.
+This architecture ensures the Standards layer remains pure, testable, reusable across different audio hardware platforms, and maintains strict AES-11 compliance while following professional audio development principles.
 
 ## ⚠️ MANDATORY: YAML Front Matter Schema Compliance
 
