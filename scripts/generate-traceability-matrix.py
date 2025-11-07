@@ -128,8 +128,15 @@ for comp in index['component']:
         if req in text:
             req_links[req].add(comp)
 for test in index['test']:
-    # naive: if test id includes requirement id substring (rare) skip, else can't infer; placeholder
-    pass
+    # Link tests to requirements if they co-occur in the same file
+    test_files = occurrence['test'][test]
+    for p in test_files:
+        try:
+            t = p.read_text(encoding='utf-8', errors='ignore')
+        except Exception:
+            continue
+        for req in PATTERNS['requirement'].findall(t):
+            req_links[req].add(test)
 
 # Orphan detection
 orphans = {
@@ -155,15 +162,65 @@ if not any(index.values()) and os.environ.get('ALLOW_EMPTY_SPECS'):
     print('Empty scaffold: generated placeholder traceability outputs.')
     raise SystemExit(0)
 
+def req_group(req_id: str) -> str:
+    if re.search(r'^REQ-(?:[A-Z]{4}-)?F-', req_id):
+        return 'Functional Requirements'
+    if re.search(r'^REQ-(?:[A-Z]{4}-)?NF-', req_id):
+        return 'Non-Functional Requirements'
+    return 'Other Requirements'
+
+def req_sort_key(req_id: str):
+    # Extract trailing numeric code for stable sorting; fallback to full id
+    m = re.search(r'(\d{3})(?!.*\d)', req_id)
+    num = int(m.group(1)) if m else 0
+    return (req_group(req_id), req_id, num)
+
+# Summary metrics
+total_reqs = len(index['requirement'])
+linked_reqs = sum(1 for r in index['requirement'] if req_links.get(r))
+coverage = (linked_reqs / total_reqs * 100.0) if total_reqs else 0.0
+
+def group_counts(prefix_regex: str):
+    subset = [r for r in index['requirement'] if re.search(prefix_regex, r)]
+    if not subset:
+        return (0, 0, 0.0)
+    linked = sum(1 for r in subset if req_links.get(r))
+    return (len(subset), linked, linked / len(subset) * 100.0)
+
+fn_total, fn_linked, fn_cov = group_counts(r'^REQ-(?:[A-Z]{4}-)?F-')
+nf_total, nf_linked, nf_cov = group_counts(r'^REQ-(?:[A-Z]{4}-)?NF-')
+
 matrix_lines = [
     '# Traceability Matrix (Heuristic Draft)',
     '',
-    '| Requirement | Linked Elements (ADR / Component / Scenario / Test) |',
-    '|-------------|----------------------------------------------------|',
+    '## Summary',
+    '',
+    f'- Requirements total: {total_reqs}',
+    f'- Requirements linked: {linked_reqs}',
+    f'- Coverage: {coverage:.1f}%',
+    f'- Functional: {fn_linked}/{fn_total} ({fn_cov:.1f}%)',
+    f'- Non-Functional: {nf_linked}/{nf_total} ({nf_cov:.1f}%)',
+    '',
 ]
-for req in sorted(index['requirement']):
-    linked = ', '.join(sorted(req_links.get(req, []))) or '(none)'
-    matrix_lines.append(f'| {req} | {linked} |')
+
+sections = [
+    ('Functional Requirements', r'^REQ-(?:[A-Z]{4}-)?F-'),
+    ('Non-Functional Requirements', r'^REQ-(?:[A-Z]{4}-)?NF-'),
+    ('Other Requirements', r'^(?!REQ-(?:[A-Z]{4}-)?(?:F|NF)-)')
+]
+
+for section_title, pattern in sections:
+    section_reqs = sorted([r for r in index['requirement'] if re.search(pattern, r)], key=req_sort_key)
+    if not section_reqs:
+        continue
+    matrix_lines.append(f'## {section_title}')
+    matrix_lines.append('')
+    matrix_lines.append('| Requirement | Linked Elements (ADR / Component / Scenario / Test) |')
+    matrix_lines.append('|-------------|----------------------------------------------------|')
+    for req in section_reqs:
+        linked = ', '.join(sorted(req_links.get(req, []))) or '(none)'
+        matrix_lines.append(f'| {req} | {linked} |')
+    matrix_lines.append('')
 
 (REPORTS / 'traceability-matrix.md').write_text('\n'.join(matrix_lines), encoding='utf-8')
 
