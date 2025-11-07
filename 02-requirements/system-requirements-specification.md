@@ -636,6 +636,7 @@ Scenario: Report input signal quality metrics
 **Rationale**: AES-11-2009 Section 4.4.3 describes sample-rate conversion as method for handling asynchronous inputs without common timing reference, essential for integrating non-synchronized audio sources.
 
 **Functional Behavior**:
+
 1. System shall detect input audio sampling frequency
 2. System shall convert input audio to system reference frequency using ASRC
 3. System shall maintain audio quality during conversion (THD+N <-100 dB, passband ripple <±0.01 dB)
@@ -644,6 +645,7 @@ Scenario: Report input signal quality metrics
 6. System shall report conversion quality metrics and frequency offset
 
 **Data Structures**:
+
 ```c
 typedef struct {
     uint32_t input_rate_hz;          // Detected input frequency
@@ -664,6 +666,7 @@ typedef struct {
 ```
 
 **Boundary Values**:
+
 | Parameter | Minimum | Typical | Maximum | Unit | Reference |
 |-----------|---------|---------|---------|------|-----------|
 | Frequency offset support | -1000 | 0 | +1000 | ppm | Implementation |
@@ -673,6 +676,7 @@ typedef struct {
 | Conversion latency | - | 5 | 20 | ms | Implementation |
 
 **Acceptance Criteria**:
+
 ```gherkin
 Scenario: Convert 44.1 kHz input to 48 kHz system reference
   Given system reference is 48 kHz
