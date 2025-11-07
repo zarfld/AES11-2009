@@ -1,5 +1,5 @@
 ---
-applyTo: "**"
+applyTo: '**'
 ---
 
 # AES-11 Standards Implementation AI Coding Instructions
