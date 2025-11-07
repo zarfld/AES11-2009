@@ -1011,6 +1011,185 @@ Scenario: GPS acquisition timeout and fallback
 
 ---
 
+#### REQ-F-DARS-007: Date and Time Distribution via Channel Status
+
+- **Trace to**: StR-FUNC-002, StR-USER-002
+- **Priority**: Medium (P2)
+
+**Description**: The system shall distribute date and time information via AES3 channel status bits per AES-11-2009 Annex A, enabling time-of-day synchronization across audio facilities without requiring separate timecode interfaces.
+
+**Rationale**: AES-11 Annex A defines optional date/time distribution in channel status bytes. Professional broadcast facilities require time-of-day synchronization for program scheduling, logging, and coordination with video systems. Using existing DARS infrastructure eliminates need for separate SMPTE timecode distribution.
+
+**Functional Behavior**:
+
+1. System shall encode date/time in channel status bytes per AES-11 Annex A format
+2. System shall support local time and UTC (Coordinated Universal Time) distribution
+3. System shall encode year (0-99), month (1-12), day (1-31), hour (0-23), minute (0-59), second (0-59)
+4. System shall update channel status time information at least once per second
+5. System shall provide leap second indication flag in channel status
+6. System shall maintain time accuracy ±100 ms relative to reference time source (GPS/NTP)
+7. System shall handle date/time reception from DARS and distribution to application callbacks
+
+**Channel Status Date/Time Format** (AES-11 Annex A):
+```c
+typedef struct {
+    uint8_t year;                 // 0-99 (add 2000 for full year)
+    uint8_t month;                // 1-12
+    uint8_t day;                  // 1-31
+    uint8_t hour;                 // 0-23
+    uint8_t minute;               // 0-59
+    uint8_t second;               // 0-59
+    bool is_utc;                  // true=UTC, false=local time
+    bool leap_second;             // Leap second indicator
+    int8_t timezone_hours;        // Timezone offset from UTC (-12 to +14)
+    uint8_t timezone_minutes;     // Timezone offset minutes (0, 15, 30, 45)
+} aes11_datetime_t;
+
+// Date/time distribution callbacks
+typedef void (*datetime_update_callback_t)(const aes11_datetime_t* datetime, void* context);
+
+int aes11_datetime_encode(const aes11_datetime_t* datetime, uint8_t* channel_status);
+int aes11_datetime_decode(const uint8_t* channel_status, aes11_datetime_t* datetime);
+int aes11_datetime_register_callback(datetime_update_callback_t callback, void* context);
+```
+
+**Boundary Values**:
+| Parameter | Minimum | Typical | Maximum | Unit | Reference |
+|-----------|---------|---------|---------|------|-----------|
+| Time accuracy | 0 | 50 | 100 | ms | AES-11 Annex A |
+| Update rate | 1 | 1 | 10 | Hz | Implementation |
+| Year range | 0 (2000) | - | 99 (2099) | year | AES-11 Annex A |
+| Timezone offset | -12:00 | 0:00 | +14:00 | hours | UTC standard |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Encode current date/time to channel status
+  Given current time is 2025-11-07 14:30:45 UTC
+  And system configured for UTC time distribution
+  When aes11_datetime_encode() is called
+  Then channel status shall contain year=25, month=11, day=7
+  And hour=14, minute=30, second=45, is_utc=true
+  And encoding shall complete within 1 ms
+
+Scenario: Decode date/time from received DARS
+  Given DARS signal received with channel status date/time
+  And channel status contains year=25, month=11, day=7, 14:30:45 UTC
+  When aes11_datetime_decode() is called
+  Then decoded datetime shall match exactly
+  And datetime_update_callback shall be invoked within 100 ms
+  And application receives full date/time structure
+
+Scenario: Handle leap second indication
+  Given UTC source indicates upcoming leap second at 2025-12-31 23:59:60
+  When leap second event occurs
+  Then channel status leap_second flag shall be set true
+  And system shall maintain DARS lock throughout leap second
+  And time shall transition 23:59:59 → 23:59:60 → 00:00:00
+  And no audio discontinuities shall occur
+```
+
+**Dependencies**:
+- **Internal**: REQ-F-DARS-001 (channel status processing), REQ-F-HAL-001 (audio interface)
+- **External**: GPS/NTP time source for reference time
+
+**Verification Method**: Test (date/time encoding/decoding, leap second handling, time accuracy measurement relative to GPS)
+
+---
+
+### 3.2 Synchronization Requirements (continued)
+
+#### REQ-F-SYNC-004: Cascaded System Error Propagation Limits
+
+- **Trace to**: StR-PERF-003, StR-REL-002
+- **Priority**: High (P1)
+
+**Description**: The system shall limit cumulative timing error propagation in cascaded multi-stage synchronization chains per AES-11 Section 4.4, ensuring Grade 1 accuracy maintained through ≥3 stages and Grade 2 through ≥5 stages without external re-reference.
+
+**Rationale**: Professional broadcast facilities chain multiple studios/equipment racks, each introducing timing errors. AES-11 Section 4.4 specifies cascading rules ensuring synchronization quality doesn't degrade below usability thresholds across typical facility topologies (3-5 cascaded stages).
+
+**Functional Behavior**:
+
+1. System shall track cumulative timing error across cascade stages
+2. System shall maintain Grade 1 accuracy (±1 ppm) through minimum 3 cascade stages
+3. System shall maintain Grade 2 accuracy (±10 ppm) through minimum 5 cascade stages
+4. System shall calculate worst-case error accumulation: E_total = √(E₁² + E₂² + ... + Eₙ²)
+5. System shall provide cascade stage counter and cumulative error reporting via diagnostic API
+6. System shall log WARNING when approaching cascade limits (80% of error budget)
+7. System shall log ERROR and recommend re-referencing when cascade limit exceeded
+
+**Cascading Error Budget Table** (AES-11 Section 4.4):
+
+| Cascade Stage | Grade 1 Max Error | Grade 2 Max Error | Notes |
+|---------------|-------------------|-------------------|-------|
+| 1 (Reference) | ±1.0 ppm | ±10.0 ppm | Primary reference |
+| 2 (First slave) | ±1.4 ppm | ±14.1 ppm | √2 error growth |
+| 3 (Second slave) | ±1.7 ppm | ±17.3 ppm | √3 error growth |
+| 4 (Third slave) | ±2.0 ppm | ±20.0 ppm | Grade 1 limit reached |
+| 5 (Fourth slave) | ±2.2 ppm | ±22.4 ppm | Grade 2 approaching limit |
+| 6+ | >2.5 ppm | >25.0 ppm | Re-reference required |
+
+**Cascade Tracking Interface**:
+```c
+typedef struct {
+    uint8_t cascade_stage;           // Current stage number (0=primary reference)
+    float cumulative_error_ppm;      // Total accumulated error
+    float error_budget_remaining;    // Percentage of budget remaining
+    bool grade1_compliant;           // Still within Grade 1 limits
+    bool grade2_compliant;           // Still within Grade 2 limits
+    uint32_t stages_until_rereference; // Stages before re-reference needed
+} cascade_error_state_t;
+
+int aes11_cascade_get_state(cascade_error_state_t* state);
+int aes11_cascade_reset(void);  // Reset to primary reference
+int aes11_cascade_increment_stage(float stage_error_ppm);
+```
+
+**Boundary Values**:
+| Parameter | Minimum | Typical | Maximum | Unit | Reference |
+|-----------|---------|---------|---------|------|-----------|
+| Grade 1 cascade stages | 3 | 3 | 4 | stages | AES-11 Sec 4.4 |
+| Grade 2 cascade stages | 5 | 5 | 6 | stages | AES-11 Sec 4.4 |
+| Per-stage error | ±0.1 | ±0.5 | ±1.0 | ppm | Implementation |
+| Warning threshold | 70 | 80 | 90 | % budget | Reliability |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Track cumulative error through 3-stage Grade 1 cascade
+  Given primary reference at Grade 1 (±1.0 ppm)
+  When stage 1 adds +0.5 ppm error (cumulative = 1.12 ppm)
+  And stage 2 adds +0.3 ppm error (cumulative = 1.16 ppm)
+  And stage 3 adds +0.4 ppm error (cumulative = 1.25 ppm)
+  Then cascade_stage shall equal 3
+  And cumulative_error_ppm shall be 1.25 ppm
+  And grade1_compliant shall be true (within 3-stage budget)
+  And error_budget_remaining shall be ~26% (1.25/1.7)
+  And no WARNING shall be logged
+
+Scenario: Warn when approaching Grade 2 cascade limits
+  Given Grade 2 system at cascade stage 4 (cumulative error 18.0 ppm)
+  When stage 5 adds +3.0 ppm error (cumulative = 18.25 ppm)
+  Then cumulative_error_ppm shall be 18.25 ppm
+  And error_budget_remaining shall be ~18% (18.25/22.4)
+  And WARNING shall be logged "Approaching Grade 2 cascade limit"
+  And stages_until_rereference shall be 1
+
+Scenario: Exceed cascade limits and require re-reference
+  Given Grade 1 system at cascade stage 4 (cumulative error 1.9 ppm)
+  When stage 5 adds +0.5 ppm error (cumulative = 2.0 ppm)
+  Then grade1_compliant shall be false (exceeds 3-stage budget of 1.7 ppm)
+  And ERROR shall be logged "Grade 1 cascade limit exceeded at stage 5"
+  And recommendation shall be "Re-reference required: connect to primary DARS"
+  And system may continue operation in Grade 2 mode if < 22.4 ppm
+```
+
+**Dependencies**:
+- **Internal**: REQ-F-SYNC-001 (DARS sync), REQ-F-ERROR-001 (error tracking), REQ-F-ERROR-003 (diagnostic logging)
+- **External**: AES-11-2009 Section 4.4 (cascading rules)
+
+**Verification Method**: Test (multi-stage cascade simulation, error accumulation measurement, threshold warnings validation)
+
+---
+
 ### 3.3 Hardware Abstraction Layer (HAL) Requirements
 
 Requirements for platform-independent hardware interfaces per StR-FUNC-002.
