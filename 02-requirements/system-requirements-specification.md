@@ -5099,6 +5099,7 @@ Four primary verification methods are employed per IEEE 1012-2016:
 **Applicable Requirements**: Functional requirements (REQ-F-xxx), Performance requirements (REQ-NF-PERF-xxx), Reliability requirements (REQ-NF-REL-xxx)
 
 **Test Levels**:
+
 - **Unit Tests**: Individual functions/classes with mock dependencies (≥80% coverage)
 - **Integration Tests**: Component interactions, interface compatibility
 - **System Tests**: End-to-end functionality, AES-11 compliance
@@ -5108,6 +5109,7 @@ Four primary verification methods are employed per IEEE 1012-2016:
 **Test Automation**: ≥95% of tests automated via GoogleTest, Unity, or pytest frameworks
 
 **Test Environments**:
+
 - Development: Developer workstations with mock HAL interfaces
 - Integration: Multi-platform test lab (Windows/Linux/macOS/embedded)
 - System: AES-11 compliance test equipment (frequency counters, jitter analyzers, oscilloscopes)
@@ -5119,12 +5121,14 @@ Four primary verification methods are employed per IEEE 1012-2016:
 **Applicable Requirements**: Architecture requirements, Design specifications, Documentation requirements (REQ-NF-MAINT-002)
 
 **Inspection Types**:
+
 - **Requirements Inspection**: Stakeholder and domain expert review of requirements specifications
 - **Design Inspection**: Architecture review board (ARB) review of ADRs and design documents
 - **Code Inspection**: Peer code reviews, pair programming sessions (XP practice)
 - **Documentation Inspection**: Technical writer review of user manuals, API documentation
 
 **Inspection Checklists**:
+
 - Requirements: Completeness, correctness, consistency, testability (IEEE 29148:2018 criteria)
 - Architecture: Compliance with architectural principles, ADR quality
 - Code: Coding standards, CERT C/C++ secure coding guidelines
@@ -5137,6 +5141,7 @@ Four primary verification methods are employed per IEEE 1012-2016:
 **Applicable Requirements**: Reliability requirements (REQ-NF-REL-xxx), Security requirements (REQ-NF-SEC-xxx), Maintainability requirements
 
 **Analysis Types**:
+
 - **Static Analysis**: Automated code analysis (Coverity, clang-tidy, cppcheck) for defects, security vulnerabilities
 - **Traceability Analysis**: Requirements traceability matrix (RTM) completeness verification
 - **Performance Analysis**: Timing analysis, resource utilization modeling
@@ -5144,6 +5149,7 @@ Four primary verification methods are employed per IEEE 1012-2016:
 - **Security Analysis**: Threat modeling, vulnerability analysis, CERT C/C++ compliance audit
 
 **Analysis Tools**:
+
 - Static Analysis: Coverity, clang-tidy, cppcheck, SonarQube
 - Coverage Analysis: gcov, lcov, Codecov
 - Performance Analysis: Valgrind, perf, Tracy profiler
@@ -5156,6 +5162,7 @@ Four primary verification methods are employed per IEEE 1012-2016:
 **Applicable Requirements**: User-facing features, System integration requirements, Portability requirements (REQ-NF-PORT-xxx)
 
 **Demonstration Scenarios**:
+
 - **DARS Generation Demo**: Live demonstration of DARS generation at multiple sample rates
 - **Synchronization Demo**: Multi-device synchronization with cascaded DARS reference
 - **Interoperability Demo**: Integration with third-party AES-11 equipment
@@ -5163,6 +5170,7 @@ Four primary verification methods are employed per IEEE 1012-2016:
 - **Performance Demo**: Real-time latency and timing accuracy measurement
 
 **Demonstration Environments**:
+
 - Trade shows and conferences (AES Convention)
 - Customer proof-of-concept installations
 - Field trials with beta customers
@@ -5173,7 +5181,7 @@ The following table maps each system requirement to its primary verification met
 
 | Requirement ID | Requirement Title | Verification Method(s) | Test Level | Acceptance Criteria |
 |----------------|-------------------|----------------------|-----------|---------------------|
-| **Section 3.1: DARS Protocol** |
+| **Section 3.1: DARS Protocol** | | | | |
 | REQ-F-DARS-001 | DARS Format Compliance | Test, Inspection | Unit, System | AES3 frame parsing, preamble detection validated |
 | REQ-F-DARS-002 | Grade 1/2 Frequency Accuracy | Test | System | ±1/±10 ppm measured over 1000s |
 | REQ-F-DARS-003 | Capture Range Support | Test | System | ±2/±50 ppm capture validated |
@@ -5182,12 +5190,12 @@ The following table maps each system requirement to its primary verification met
 | REQ-F-DARS-006 | GPS-Referenced Synchronization | Test, Demonstration | System | GPS lock, 1PPS sync validated |
 | REQ-F-DARS-007 | Date and Time Distribution | Test | Integration | Channel status date/time validated |
 | REQ-F-DARS-008 | Sampling Frequency Validation | Test | Unit, Integration | AES5 rates validated, non-standard rejected |
-| **Section 3.2: Synchronization** |
+| **Section 3.2: Synchronization** | | | | |
 | REQ-F-SYNC-001 | DARS-Referenced Synchronization | Test | System | ±5% phase tolerance, multi-rate lock |
 | REQ-F-SYNC-002 | Audio-Input-Referenced Sync | Test | System | Embedded clock lock, cascaded tracking |
 | REQ-F-SYNC-003 | Sample Rate Conversion | Test | Integration | ASRC functionality validated |
 | REQ-F-SYNC-004 | Cascaded Error Propagation | Test | System | <15% frame period error in 3-hop cascade |
-| **Section 3.3: HAL Interface** |
+| **Section 3.3: HAL Interface** | | | | |
 | REQ-F-HAL-001 | Audio Interface Abstraction | Test, Inspection | Unit, Integration | Audio HAL interface validated |
 | REQ-F-HAL-002 | Timing Interface Abstraction | Test, Inspection | Unit, Integration | Timing HAL interface validated |
 | REQ-F-HAL-003 | Sync Interface Abstraction | Test, Inspection | Unit, Integration | Sync HAL interface validated |
@@ -5195,7 +5203,7 @@ The following table maps each system requirement to its primary verification met
 | REQ-F-HAL-005 | Memory Management | Test, Analysis | Unit, Integration | Memory allocation/deallocation validated |
 | REQ-F-HAL-006 | Platform Capabilities Discovery | Test | Integration | Platform capabilities detected correctly |
 | REQ-F-HAL-007 | Thread Safety and Concurrency | Test, Analysis | Integration | Thread-safe operation validated |
-| **Section 3.4: Conformance Testing** |
+| **Section 3.4: Conformance Testing** | | | | |
 | REQ-F-CONFORM-001 | Section 5 Test Suite | Test | System | 28 AES-11 Section 5 tests pass |
 | REQ-F-CONFORM-002 | Interoperability Framework | Test, Demonstration | System | Multi-vendor interop validated |
 | REQ-F-CONFORM-003 | Section 6 Jitter Test Suite | Test | System | <10 ns jitter measured |
@@ -5204,42 +5212,42 @@ The following table maps each system requirement to its primary verification met
 | REQ-F-CONFORM-006 | Multi-Platform Test Framework | Test | Integration | Tests pass on all platforms |
 | REQ-F-CONFORM-007 | Performance Benchmarking | Test | System | Performance targets met |
 | REQ-F-CONFORM-008 | Compliance Documentation | Inspection | N/A | Documentation complete and accurate |
-| **Section 3.5: Error Handling** |
+| **Section 3.5: Error Handling** | | | | |
 | REQ-F-ERROR-001 | Error Detection Framework | Test, Analysis | Unit, Integration | All error codes detected correctly |
 | REQ-F-ERROR-002 | Automatic Recovery | Test | System | Recovery success rate >95% |
 | REQ-F-ERROR-003 | Diagnostic Logging | Test, Inspection | Integration | Logging functional, performance validated |
 | REQ-F-ERROR-004 | Fault Tolerance | Test | System | Graceful degradation validated |
 | REQ-F-ERROR-005 | Error Notification System | Test | Integration | Event delivery <1 ms latency |
 | REQ-F-ERROR-006 | Diagnostic Interface | Test, Demonstration | Integration | Health metrics reported correctly |
-| **Section 3.6: Integration** |
+| **Section 3.6: Integration** | | | | |
 | REQ-F-INTEG-001 | AES3-2009 Integration | Test, Inspection | Integration | AES3 repository integration validated |
 | REQ-F-INTEG-002 | AES5-2018 Integration | Test, Inspection | Integration | AES5 repository integration validated |
 | REQ-F-INTEG-003 | Namespace Isolation | Inspection, Analysis | N/A | Namespace structure validated |
 | REQ-F-INTEG-004 | CMake Dependency Management | Test | Integration | Version management validated |
-| **Section 4.1: Performance** |
+| **Section 4.1: Performance** | | | | |
 | REQ-NF-PERF-001 | Real-Time Latency | Test | System | <1 ms latency measured |
 | REQ-NF-PERF-002 | Throughput | Test | System | All AES5 rates sustained 24+ hours |
 | REQ-NF-PERF-003 | Timing Accuracy | Test | System | ±1/±10 ppm validated with equipment |
 | REQ-NF-PERF-004 | Resource Utilization | Test, Analysis | System | <25% CPU, <50 MB memory validated |
 | REQ-NF-PERF-005 | Scalability | Test | System | 8 instances linear scaling validated |
-| **Section 4.2: Reliability** |
+| **Section 4.2: Reliability** | | | | |
 | REQ-NF-REL-001 | MTBF ≥10,000 hours | Analysis, Test | System | Reliability prediction model validated |
 | REQ-NF-REL-002 | Availability ≥99.9% | Analysis, Test | System | Availability calculation validated |
 | REQ-NF-REL-003 | Error Recovery ≥95% | Test | System | Fault injection recovery validated |
 | REQ-NF-REL-004 | Data Integrity | Test | Integration | CRC validation functional |
 | REQ-NF-REL-005 | Graceful Degradation | Test | System | Degraded mode operation validated |
 | REQ-NF-REL-006 | Reliability Testing | Test | System | 168-hour burn-in, accelerated testing |
-| **Section 4.3: Security** |
+| **Section 4.3: Security** | | | | |
 | REQ-NF-SEC-001 | Input Validation | Test, Analysis | Unit, Integration | Fuzzing, boundary tests pass |
 | REQ-NF-SEC-002 | Resource Limits | Test | System | DoS prevention validated |
 | REQ-NF-SEC-003 | Secure Coding | Analysis, Inspection | N/A | CERT C/C++ compliance, static analysis pass |
 | REQ-NF-SEC-004 | Audit Logging | Test, Inspection | Integration | Tamper-evident audit trail validated |
-| **Section 4.4: Maintainability** |
+| **Section 4.4: Maintainability** | | | | |
 | REQ-NF-MAINT-001 | Code Modularity | Inspection, Analysis | N/A | Architecture review, dependency analysis |
 | REQ-NF-MAINT-002 | Documentation | Inspection | N/A | ≥90% API coverage, Doxygen validation |
 | REQ-NF-MAINT-003 | Testability | Test, Inspection | Unit, Integration | Mock interfaces, test coverage validated |
 | REQ-NF-MAINT-004 | Change Impact Analysis | Analysis | N/A | Traceability matrix, impact tool validated |
-| **Section 4.5: Portability** |
+| **Section 4.5: Portability** | | | | |
 | REQ-NF-PORT-001 | Platform Independence | Test, Demonstration | Integration | Compilation on all platforms validated |
 | REQ-NF-PORT-002 | Compiler Support | Test | Integration | GCC/Clang/MSVC compilation validated |
 | REQ-NF-PORT-003 | Standards Compliance | Test, Inspection | System | AES-11, IEEE standards compliance validated |
