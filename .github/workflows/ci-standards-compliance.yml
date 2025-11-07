@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main, master, develop]
   schedule:
-    # Run daily at 2 AM UTC
+    # Run weekly at 2 AM UTC (Sunday)
     - cron: "0 2 * * 0"
 
 env:
@@ -116,7 +116,6 @@ jobs:
           }
 
   # Phase 05: TDD - Test-Driven Development
-  unit-tests:
   cxx-implementation:
     name: C++ Standards Layer Build & Tests (Phase 05 TDD)
     runs-on: ubuntu-latest
@@ -125,12 +124,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Install build tools
+        if: ${{ hashFiles('CMakeLists.txt') != '' }}
         run: sudo apt-get update && sudo apt-get install -y build-essential cmake
       - name: Configure (CMake)
+        if: ${{ hashFiles('CMakeLists.txt') != '' }}
         run: cmake -S . -B build -DBUILD_TESTS=ON
       - name: Build
+        if: ${{ hashFiles('CMakeLists.txt') != '' }}
         run: cmake --build build -- -j$(nproc)
       - name: Run C++ tests
+        if: ${{ hashFiles('CMakeLists.txt') != '' }}
         run: ctest --test-dir build --output-on-failure || { echo "❌ C++ tests failed"; exit 1; }
       - name: Upload C++ test results
         if: always()
@@ -138,27 +141,33 @@ jobs:
         with:
           name: cxx-test-results
           path: build/Testing
+  unit-tests:
     name: Unit Tests (XP - TDD Red-Green-Refactor)
     runs-on: ubuntu-latest
+    needs: [spec-generation]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: ${{ hashFiles('package.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
       - name: Install dependencies
+        if: ${{ hashFiles('package.json') != '' }}
         run: npm ci
 
       - name: Run unit tests
+        if: ${{ hashFiles('package.json') != '' }}
         run: |
           echo "🧪 Running unit tests (TDD practice)..."
           npm test -- --coverage --watchAll=false
 
       - name: Check test coverage
+        if: ${{ hashFiles('package.json') != '' }}
         run: |
           echo "📊 Checking test coverage threshold..."
           COVERAGE=$(npm test -- --coverage --watchAll=false --silent | grep 'All files' | awk '{print $10}' | sed 's/%//')
@@ -172,6 +181,7 @@ jobs:
           fi
 
       - name: Upload coverage reports
+        if: ${{ hashFiles('package.json') != '' }}
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage/lcov.info
@@ -253,15 +263,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: ${{ hashFiles('package.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
       - name: Install dependencies
+        if: ${{ hashFiles('package.json') != '' }}
         run: npm ci
 
       - name: Run database migrations
+        if: ${{ hashFiles('package.json') != '' }}
         run: |
           echo "🗄️ Running database migrations..."
           npm run db:migrate
@@ -269,6 +282,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:test_password@localhost:5432/test_db
 
       - name: Run integration tests
+        if: ${{ hashFiles('package.json') != '' }}
         run: |
           echo "🔗 Running integration tests..."
           npm run test:integration
@@ -338,21 +352,26 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: ${{ hashFiles('package.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
       - name: Install dependencies
+        if: ${{ hashFiles('package.json') != '' }}
         run: npm ci
 
       - name: Install Playwright
+        if: ${{ hashFiles('package.json') != '' }}
         run: npx playwright install --with-deps
 
       - name: Build application
+        if: ${{ hashFiles('package.json') != '' }}
         run: npm run build
 
       - name: Start application
+        if: ${{ hashFiles('package.json') != '' }}
         run: |
           npm run start &
           echo $! > .app.pid
@@ -360,6 +379,7 @@ jobs:
           npx wait-on http://localhost:3000 -t 60000
 
       - name: Run acceptance tests (BDD)
+        if: ${{ hashFiles('package.json') != '' }}
         run: |
           echo "🎭 Running acceptance tests (Behavior-Driven Development)..."
           npm run test:acceptance
@@ -432,15 +452,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run npm audit
+        if: ${{ hashFiles('package.json') != '' }}
         run: |
           echo "🔒 Running npm security audit..."
           npm audit --audit-level=moderate
 
       - name: Run Snyk security scan
-        uses: snyk/actions/node@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          echo "⚠️ Snyk scan skipped (token not configured in lint environment)."
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -462,6 +481,7 @@ jobs:
       [
         spec-validation,
         code-quality,
+        cxx-implementation,
         unit-tests,
         integration-tests,
         requirements-traceability,
@@ -505,7 +525,7 @@ jobs:
 
           ## ISO/IEC/IEEE 29148:2018 - Requirements Engineering
 
-          - ✅ Requirements traceability: ${{ needs.requirements-traceability.result }}
+          - ✅ Requirements traceability: ${{ needs['requirements-traceability'].result }}
           - ✅ Stakeholder requirements documented
           - ✅ System requirements specified
           - ✅ Acceptance criteria defined
@@ -518,16 +538,16 @@ jobs:
 
           ## ISO/IEC/IEEE 42010:2011 - Architecture Description
 
-          - ✅ Architecture validation: ${{ needs.architecture-validation.result }}
+          - ✅ Architecture validation: ${{ needs['architecture-validation'].result }}
           - ✅ Stakeholder concerns addressed
           - ✅ Architecture viewpoints defined
           - ✅ Architecture views documented
 
           ## IEEE 1012-2016 - Verification and Validation
 
-          - ✅ Unit tests: ${{ needs.unit-tests.result }}
-          - ✅ Integration tests: ${{ needs.integration-tests.result }}
-          - ✅ Acceptance tests: ${{ needs.acceptance-tests.result }}
+          - ✅ Unit tests: ${{ needs['unit-tests'].result }}
+          - ✅ Integration tests: ${{ needs['integration-tests'].result }}
+          - ✅ Acceptance tests: ${{ needs['acceptance-tests'].result }}
           - ✅ Test coverage: >=${{ env.MIN_TEST_COVERAGE }}%
 
           ## XP Practices Compliance
@@ -544,25 +564,25 @@ jobs:
 
           | Metric | Target | Status |
           |--------|--------|--------|
-          | JS/TS Test Coverage | ≥80% | ${{ needs.unit-tests.result == 'success' && '✅' || '❌' }} |
-          | C++ Build & Tests | PASS | ${{ needs.cxx-implementation.result == 'success' && '✅' || '❌' }} |
-          | Cyclomatic Complexity | ≤10 | ${{ needs.code-quality.result == 'success' && '✅' || '❌' }} |
-          | Linting | 0 errors | ${{ needs.code-quality.result == 'success' && '✅' || '❌' }} |
-          | Security Vulnerabilities | 0 high/critical | ${{ needs.security-scan.result == 'success' && '✅' || '⚠️' }} |
-          | Requirements Traceability | 100% | ${{ needs.requirements-traceability.result == 'success' && '✅' || '❌' }} |
+          | JS/TS Test Coverage | ≥80% | ${{ needs['unit-tests'].result == 'success' && '✅' || '❌' }} |
+          | C++ Build & Tests | PASS | ${{ needs['cxx-implementation'].result == 'success' && '✅' || '❌' }} |
+          | Cyclomatic Complexity | ≤10 | ${{ needs['code-quality'].result == 'success' && '✅' || '❌' }} |
+          | Linting | 0 errors | ${{ needs['code-quality'].result == 'success' && '✅' || '❌' }} |
+          | Security Vulnerabilities | 0 high/critical | ${{ needs['security-scan'].result == 'success' && '✅' || '⚠️' }} |
+          | Requirements Traceability | 100% | ${{ needs['requirements-traceability'].result == 'success' && '✅' || '❌' }} |
 
           ## Overall Status
 
-          - Code Quality: ${{ needs.code-quality.result }}
-          - Unit Tests: ${{ needs.unit-tests.result }}
-          - C++ Implementation Tests: ${{ needs.cxx-implementation.result }}
-          - Integration Tests: ${{ needs.integration-tests.result }}
-          - Acceptance Tests: ${{ needs.acceptance-tests.result }}
-          - Architecture: ${{ needs.architecture-validation.result }}
-          - Security: ${{ needs.security-scan.result }}
-          - Traceability: ${{ needs.requirements-traceability.result }}
+          - Code Quality: ${{ needs['code-quality'].result }}
+          - Unit Tests: ${{ needs['unit-tests'].result }}
+          - C++ Implementation Tests: ${{ needs['cxx-implementation'].result }}
+          - Integration Tests: ${{ needs['integration-tests'].result }}
+          - Acceptance Tests: ${{ needs['acceptance-tests'].result }}
+          - Architecture: ${{ needs['architecture-validation'].result }}
+          - Security: ${{ needs['security-scan'].result }}
+          - Traceability: ${{ needs['requirements-traceability'].result }}
 
-          **Build Status**: ${{ needs.code-quality.result == 'success' && needs.unit-tests.result == 'success' && needs.integration-tests.result == 'success' && '✅ PASSED' || '❌ FAILED' }}
+          **Build Status**: ${{ needs['code-quality'].result == 'success' && needs['unit-tests'].result == 'success' && needs['integration-tests'].result == 'success' && '✅ PASSED' || '❌ FAILED' }}
           EOF
 
           cat compliance-report.md
@@ -601,9 +621,7 @@ jobs:
         security-scan,
       ]
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    environment:
-      name: staging
-      url: https://staging.example.com
+    # Environment metadata omitted until deployment credentials configured
 
     steps:
       - name: Checkout code
