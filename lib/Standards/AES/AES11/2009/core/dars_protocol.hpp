@@ -22,9 +22,9 @@ enum class DARSState : uint8_t {
 
 // Events that may drive state transitions (expanded later)
 enum class DARSEvent : uint8_t {
-    BeginAcquire,   // trigger acquisition
-    FrameValid,     // valid frame indicates possible lock progression
-    FrameInvalid,   // invalid frame - could degrade or error
+    BeginAcquire, // trigger acquisition
+    FrameValid,   // valid frame indicates possible lock progression
+    FrameInvalid, // invalid frame - could degrade or error
 };
 
 class DARSProtocol {

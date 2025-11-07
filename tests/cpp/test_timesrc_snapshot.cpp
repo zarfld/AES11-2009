@@ -5,6 +5,7 @@
 #include <vector>
 #include <atomic>
 #include <algorithm>
+#include <mutex>
 
 // Simple mock clock providing deterministic monotonic behavior
 class MockClock : public Common::interfaces::ClockInterface {
@@ -89,8 +90,12 @@ TEST(TimingSnapshotServiceTests, ConcurrentSnapshotsYieldUniqueSequences) {
     };
 
     std::vector<std::thread> ts;
-    for (int i = 0; i < threads; ++i) ts.emplace_back(worker);
-    for (auto& t : ts) t.join();
+    for (int i = 0; i < threads; ++i) {
+        ts.emplace_back(worker);
+    }
+    for (auto &t : ts) {
+        t.join();
+    }
 
     std::sort(seqs.begin(), seqs.end());
     seqs.erase(std::unique(seqs.begin(), seqs.end()), seqs.end());

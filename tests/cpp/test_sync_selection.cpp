@@ -76,9 +76,9 @@ TEST(SyncSelectionTests, TieScoresRetainCurrent) {
 TEST(SyncSelectionTests, AllSourcesDegradedSelectsHighestScore) {
     SynchronizationManager mgr(0.3);
     std::vector<SourceMetrics> sources = {
-        {0.10, 6.0, true},  // score -4.10
-        {0.05, 6.1, true},  // score -3.95 (best)
-        {0.20, 6.3, true}   // score -3.90 (actually best -> 6.3-0.20-10 = -3.90)
+        {0.10, 6.0, true}, // score -4.10
+        {0.05, 6.1, true}, // score -3.95 (best)
+        {0.20, 6.3, true}  // score -3.90 (actually best -> 6.3-0.20-10 = -3.90)
     };
     // Correction: compute each precisely -> choose index 2
     size_t sel = mgr.select(sources);
