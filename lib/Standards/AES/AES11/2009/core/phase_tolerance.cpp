@@ -7,8 +7,8 @@ namespace _2009 {
 namespace core {
 
 double PhaseTolerance::frame_period_us(double sampleRateHz) {
-    if (sampleRateHz <= 0.0) return 0.0; // Invalid; caller should handle
-    return 1'000'000.0 / sampleRateHz; // microseconds per frame
+    if (sampleRateHz <= 0.0) return 0.0;                // Invalid; caller should handle
+    return 1'000'000.0 / sampleRateHz;                  // microseconds per frame
 }
 
 double PhaseTolerance::output_tolerance_us(double sampleRateHz) {

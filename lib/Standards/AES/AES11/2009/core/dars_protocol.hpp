@@ -45,18 +45,16 @@ public:
     // Process a protocol event (future expansion). For skeleton only handles FrameValid in Acquire.
     void handleEvent(DARSEvent ev) {
         switch (ev) {
-        case DARSEvent::BeginAcquire:
-            (void)requestAcquire();
-            break;
+        case DARSEvent::BeginAcquire: (void)requestAcquire(); break;
         case DARSEvent::FrameValid:
             if (_state == DARSState::Acquire) {
-                // Minimal progression; later will validate timing reference point & channel status bits
+                // Minimal progression; future: validate TRP & channel status bits
                 _state = DARSState::Locked;
             }
             break;
         case DARSEvent::FrameInvalid:
             if (_state == DARSState::Acquire) {
-                // Stay acquiring; in future may count errors and transition to Error
+                // Stay acquiring; future: count errors then transition to Error
             }
             break;
         }

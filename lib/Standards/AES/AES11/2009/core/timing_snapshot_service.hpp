@@ -24,9 +24,9 @@ namespace core {
  *   reference principles (see AES-11-2009 Sections 3.3, 5.x references).
  */
 struct TimingSnapshot {
-    uint64_t tick;  // abstract tick counter from clock source
+    uint64_t tick;    // abstract tick counter from clock source
     uint64_t time_ns; // nanoseconds since an arbitrary epoch
-    uint64_t seq;   // monotonically increasing sequence for snapshot ordering
+    uint64_t seq;     // monotonically increasing sequence for snapshot ordering
 };
 
 /**
