@@ -144,9 +144,10 @@ def main() -> int:
             except Exception as e:
                 print(f"WARN: failed to parse {path}: {e}", file=sys.stderr)
 
-    # Parse test source files for TEST-* identifiers and requirement references.
+    # Parse test source files and associate REQ-* references PER TEST ID occurrence.
     test_id_pattern = re.compile(r'\b(TEST-[A-Z0-9\-]+)\b')
     req_ref_pattern = re.compile(r'\b(REQ-[A-Z0-9\-]+)\b')
+    verifies_pattern = re.compile(r'Verifies\s*:\s*(.*)', re.IGNORECASE)
     for tdir in CODE_TEST_DIRS:
         if not tdir.exists():
             continue
@@ -157,18 +158,30 @@ def main() -> int:
                 except Exception as e:
                     print(f"WARN: failed to read test file {src}: {e}", file=sys.stderr)
                     continue
-                test_ids = sorted(set(test_id_pattern.findall(text)))
-                if not test_ids:
-                    continue
-                req_refs = sorted({r for r in req_ref_pattern.findall(text)})
-                for tid in test_ids:
-                    all_items.append({
-                        'id': tid,
-                        'title': src.stem,
-                        'path': str(src.relative_to(ROOT)),
-                        'references': req_refs,
-                        'hash': hashlib.sha1((tid+text).encode('utf-8')).hexdigest()[:8],
-                    })
+                lines = text.splitlines()
+                pending_reqs: List[str] = []
+                for line in lines:
+                    # Capture explicit Verifies: REQ-... annotations
+                    vm = verifies_pattern.search(line)
+                    if vm:
+                        pending_reqs = sorted(set(req_ref_pattern.findall(vm.group(1))))
+                        # Continue to allow same line also containing TEST- id
+                    # For each TEST id on this line, bind nearest pending REQs or inline REQs
+                    tids = test_id_pattern.findall(line)
+                    if not tids:
+                        continue
+                    inline_reqs = sorted(set(req_ref_pattern.findall(line)))
+                    refs = sorted(set((pending_reqs or []) + inline_reqs))
+                    for tid in tids:
+                        all_items.append({
+                            'id': tid,
+                            'title': src.stem,
+                            'path': str(src.relative_to(ROOT)),
+                            'references': refs,
+                            'hash': hashlib.sha1((tid+line).encode('utf-8')).hexdigest()[:8],
+                        })
+                    # Reset pending after associating with a test occurrence
+                    pending_reqs = []
     # De-duplicate by ID keeping first occurrence while tracking duplicates
     seen = {}
     dedup: List[Dict[str, Any]] = []

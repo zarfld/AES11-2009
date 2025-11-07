@@ -18,7 +18,7 @@ private:
     uint64_t tick_ = 0;
 };
 
-// Verifies: REQ-NF-REL-004 (Data integrity & consistency: monotonic, coherent snapshot fields)
+// Verifies: REQ-NF-REL-004
 // TEST-TIMESRC-SNAPSHOT-001: Monotonic sequence ordering
 TEST(TimingSnapshotServiceTests, MonotonicSequenceIncrements) {
     MockClock clk;
@@ -34,6 +34,7 @@ TEST(TimingSnapshotServiceTests, MonotonicSequenceIncrements) {
     ASSERT_LT(s2.time_ns, s3.time_ns);
 }
 
+// Verifies: REQ-NF-REL-004
 // TEST-TIMESRC-SNAPSHOT-002: Coherence of fields within snapshot (tick/time consistent)
 TEST(TimingSnapshotServiceTests, SnapshotFieldsCoherent) {
     MockClock clk;
@@ -44,7 +45,8 @@ TEST(TimingSnapshotServiceTests, SnapshotFieldsCoherent) {
     ASSERT_EQ(snap.time_ns, snap.tick * 1'000'000ULL);
 }
 
-// Edge Case: Large number of sequential snapshots should keep strictly increasing seq without overflow for practical test range.
+// Verifies: REQ-NF-REL-004
+// TEST-TIMESRC-SNAPSHOT-003: Sequence growth no wrap in practical range
 TEST(TimingSnapshotServiceTests, SequenceGrowthNoWrapInRange) {
     MockClock clk;
     AES::AES11::_2009::core::TimingSnapshotService svc(clk);
@@ -57,7 +59,8 @@ TEST(TimingSnapshotServiceTests, SequenceGrowthNoWrapInRange) {
     }
 }
 
-// Concurrency: snapshot sequence values should be unique across threads
+// Verifies: REQ-NF-REL-004
+// TEST-TIMESRC-SNAPSHOT-004: Concurrent snapshots yield unique sequences
 TEST(TimingSnapshotServiceTests, ConcurrentSnapshotsYieldUniqueSequences) {
     class ThreadClock : public Common::interfaces::ClockInterface {
     public:

@@ -15,7 +15,8 @@ TEST(DARSProtocolTests, IdleToAcquireTransition) {
     EXPECT_EQ(proto.state(), DARSState::Acquire);
 }
 
-// Extended check: Acquire -> Locked when FrameValid event received
+// Verifies: REQ-F-SYNC-001
+// TEST-DARS-STATE-002: Acquire -> Locked when FrameValid event received
 TEST(DARSProtocolTests, AcquireToLockedOnFrameValid) {
     DARSProtocol proto;
     proto.requestAcquire();
@@ -24,7 +25,8 @@ TEST(DARSProtocolTests, AcquireToLockedOnFrameValid) {
     EXPECT_EQ(proto.state(), DARSState::Locked);
 }
 
-// Negative path: requestAcquire ignored when already acquiring or locked
+// Verifies: REQ-F-SYNC-001
+// TEST-DARS-STATE-003: requestAcquire ignored when already acquiring or locked
 TEST(DARSProtocolTests, RequestAcquireIgnoredIfNotIdle) {
     DARSProtocol proto;
     proto.requestAcquire();
@@ -33,7 +35,8 @@ TEST(DARSProtocolTests, RequestAcquireIgnoredIfNotIdle) {
     EXPECT_FALSE(proto.requestAcquire()); // locked
 }
 
-// Edge Case: Invalid transitions should not change from Idle when FrameValid without BeginAcquire.
+// Verifies: REQ-F-SYNC-001
+// TEST-DARS-STATE-004: FrameValid ignored in Idle (no BeginAcquire)
 TEST(DARSProtocolTests, FrameValidIgnoredInIdle) {
     DARSProtocol proto;
     ASSERT_EQ(proto.state(), DARSState::Idle);
@@ -41,7 +44,8 @@ TEST(DARSProtocolTests, FrameValidIgnoredInIdle) {
     EXPECT_EQ(proto.state(), DARSState::Idle);
 }
 
-// Event: BeginAcquire should transition Idle -> Acquire via handleEvent
+// Verifies: REQ-F-SYNC-001
+// TEST-DARS-STATE-005: BeginAcquire transitions Idle -> Acquire via handleEvent
 TEST(DARSProtocolTests, BeginAcquireEventTransitionsToAcquire) {
     DARSProtocol proto;
     ASSERT_EQ(proto.state(), DARSState::Idle);
@@ -49,7 +53,8 @@ TEST(DARSProtocolTests, BeginAcquireEventTransitionsToAcquire) {
     EXPECT_EQ(proto.state(), DARSState::Acquire);
 }
 
-// In Acquire, FrameInvalid should not force Error; it should keep acquiring (current behavior)
+// Verifies: REQ-F-SYNC-001
+// TEST-DARS-STATE-006: FrameInvalid keeps Acquire state (no error)
 TEST(DARSProtocolTests, FrameInvalidKeepsAcquireState) {
     DARSProtocol proto;
     ASSERT_TRUE(proto.requestAcquire());

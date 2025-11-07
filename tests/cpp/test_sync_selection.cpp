@@ -4,7 +4,7 @@
 using AES::AES11::_2009::sync::SynchronizationManager;
 using AES::AES11::_2009::sync::SourceMetrics;
 
-// Verifies: REQ-F-SYNC-001 (Source selection behavior under hysteresis for DARS-referenced sync)
+// Verifies: REQ-F-SYNC-001
 // TEST-SYNC-SELECT-001: Selection with hysteresis retains current when improvement < margin.
 TEST(SyncSelectionTests, SelectionAppliesHysteresis) {
     SynchronizationManager mgr(/*hysteresisMargin*/ 0.5);
@@ -32,7 +32,8 @@ TEST(SyncSelectionTests, SelectionAppliesHysteresis) {
     EXPECT_EQ(third, 2u);
 }
 
-// Additional check: degraded source penalized enough to avoid selection.
+// Verifies: REQ-F-SYNC-001
+// TEST-SYNC-SELECT-002: Degraded source penalization avoids selection despite nominal quality
 TEST(SyncSelectionTests, DegradedSourcePenalized) {
     SynchronizationManager mgr(0.2);
     std::vector<SourceMetrics> sources = {
@@ -44,7 +45,8 @@ TEST(SyncSelectionTests, DegradedSourcePenalized) {
     EXPECT_EQ(sel, 1u);
 }
 
-// Edge Case: Empty source list returns invalid index and does not alter current.
+// Verifies: REQ-F-SYNC-001
+// TEST-SYNC-SELECT-003: Empty source list returns invalid index and preserves current
 TEST(SyncSelectionTests, EmptySourceListReturnsInvalid) {
     SynchronizationManager mgr(0.2);
     std::vector<SourceMetrics> none;
@@ -53,7 +55,8 @@ TEST(SyncSelectionTests, EmptySourceListReturnsInvalid) {
     EXPECT_EQ(mgr.current(), SynchronizationManager::invalidIndex());
 }
 
-// Edge Case: Tie scores retain current due to hysteresis even if second appears equally good.
+// Verifies: REQ-F-SYNC-001
+// TEST-SYNC-SELECT-004: Tie scores retain current (hysteresis prevents switch)
 TEST(SyncSelectionTests, TieScoresRetainCurrent) {
     SynchronizationManager mgr(0.1);
     std::vector<SourceMetrics> sources = {
@@ -68,7 +71,8 @@ TEST(SyncSelectionTests, TieScoresRetainCurrent) {
     EXPECT_EQ(second, 1u); // retain current
 }
 
-// Edge Case: All sources degraded selects highest (quality - stability - penalty).
+// Verifies: REQ-F-SYNC-001
+// TEST-SYNC-SELECT-005: All sources degraded selects best adjusted score
 TEST(SyncSelectionTests, AllSourcesDegradedSelectsHighestScore) {
     SynchronizationManager mgr(0.3);
     std::vector<SourceMetrics> sources = {
@@ -81,7 +85,8 @@ TEST(SyncSelectionTests, AllSourcesDegradedSelectsHighestScore) {
     EXPECT_EQ(sel, 2u);
 }
 
-// Boundary: If improvement equals hysteresis margin, retain current
+// Verifies: REQ-F-SYNC-001
+// TEST-SYNC-SELECT-006: Improvement equal to margin retains current
 TEST(SyncSelectionTests, ImprovementEqualsMarginRetainsCurrent) {
     SynchronizationManager mgr(0.20);
     std::vector<SourceMetrics> sources = {
@@ -98,7 +103,8 @@ TEST(SyncSelectionTests, ImprovementEqualsMarginRetainsCurrent) {
     EXPECT_EQ(second, 1u) << "Equal to margin should retain current";
 }
 
-// Switch when improvement strictly greater than margin
+// Verifies: REQ-F-SYNC-001
+// TEST-SYNC-SELECT-007: Improvement greater than margin switches selection
 TEST(SyncSelectionTests, ImprovementGreaterThanMarginSwitches) {
     SynchronizationManager mgr(0.20);
     std::vector<SourceMetrics> sources = {

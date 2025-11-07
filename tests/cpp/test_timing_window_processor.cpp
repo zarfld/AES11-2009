@@ -4,7 +4,7 @@
 
 using AES::AES11::_2009::core::TimingWindowProcessor;
 
-// Verifies: REQ-NF-PERF-003 (Timing accuracy & jitter metrics stability evaluation)
+// Verifies: REQ-NF-PERF-003
 // TEST-DM-TIMINGWIN-001: Correct mean and variance updates (including sliding window)
 TEST(TimingWindowProcessorTests, MeanAndVarianceUpdates) {
     TimingWindowProcessor proc(4, /*varianceThreshold*/ 0.5);
@@ -28,6 +28,7 @@ TEST(TimingWindowProcessorTests, MeanAndVarianceUpdates) {
     EXPECT_NEAR(m.variance, 1.25, 1e-9);
 }
 
+// Verifies: REQ-NF-PERF-003
 // TEST-DM-TIMINGWIN-002: Stability flag under threshold and reaction to disturbance
 TEST(TimingWindowProcessorTests, StabilityFlagBehavior) {
     // Small variance threshold to detect instability
@@ -49,7 +50,8 @@ TEST(TimingWindowProcessorTests, StabilityFlagBehavior) {
     EXPECT_FALSE(m.stable) << "Variance should exceed threshold after disturbance";
 }
 
-// Edge Case: Capacity 1 window should always yield variance 0 and count 1.
+// Verifies: REQ-NF-PERF-003
+// TEST-DM-TIMINGWIN-003: Capacity 1 window variance zero invariant
 TEST(TimingWindowProcessorTests, CapacityOneWindow) {
     TimingWindowProcessor proc(1, 0.01);
     proc.addSample(10.0);
@@ -66,7 +68,8 @@ TEST(TimingWindowProcessorTests, CapacityOneWindow) {
     EXPECT_NEAR(m.variance, 0.0, 1e-12);
 }
 
-// Edge Case: Clear resets aggregates.
+// Verifies: REQ-NF-PERF-003
+// TEST-DM-TIMINGWIN-004: Clear operation resets aggregates
 TEST(TimingWindowProcessorTests, ClearResetsAggregates) {
     TimingWindowProcessor proc(4, 1.0);
     proc.addSample(1.0);
@@ -78,7 +81,8 @@ TEST(TimingWindowProcessorTests, ClearResetsAggregates) {
     EXPECT_NEAR(m.variance, 0.0, 1e-12);
 }
 
-// Boundary: variance equal to threshold should be considered NOT stable (strict < used)
+// Verifies: REQ-NF-PERF-003
+// TEST-DM-TIMINGWIN-005: Variance equal to threshold marked unstable
 TEST(TimingWindowProcessorTests, VarianceEqualThresholdNotStable) {
     TimingWindowProcessor proc(4, /*varianceThreshold*/ 1.25);
     // Populate with [1,2,3,4] -> variance = 1.25 exactly
@@ -91,7 +95,8 @@ TEST(TimingWindowProcessorTests, VarianceEqualThresholdNotStable) {
     EXPECT_FALSE(m.stable) << "Equality should not be marked stable (uses < threshold)";
 }
 
-// Robustness: negative and large values do not break mean/variance computation
+// Verifies: REQ-NF-PERF-003
+// TEST-DM-TIMINGWIN-006: Negative/large values robustness and finiteness
 TEST(TimingWindowProcessorTests, HandlesNegativeAndLargeValues) {
     TimingWindowProcessor proc(5, /*varianceThreshold*/ 1e12);
     proc.addSample(-1e6);
