@@ -18,6 +18,12 @@ env:
   MIN_REQ_LINKAGE_COVERAGE: 90
 
 jobs:
+  # Default permissions needed for uploading SARIF to code scanning; restricted scope
+  # Note: 'security-events: write' is required for upload-sarif. It is safe on internal branches.
+  permissions:
+    contents: read
+    security-events: write
+
   spec-validation:
     name: Spec Structure Validation (Schema & Traceability Prereq)
     runs-on: ubuntu-latest
@@ -77,6 +83,7 @@ jobs:
           fetch-depth: 0 # Full history for better analysis
 
       - name: Setup Node.js
+        if: ${{ hashFiles('package.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -502,9 +509,16 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        # Upload only when not from a fork and when we have permissions to write security events
+        if: ${{ always() && github.event.pull_request.head.repo.full_name == github.repository }}
         with:
           sarif_file: "trivy-results.sarif"
+      - name: Preserve Trivy SARIF as artifact (fork PRs)
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results-sarif
+          path: trivy-results.sarif
 
   # Standards Compliance Report
   compliance-report:
