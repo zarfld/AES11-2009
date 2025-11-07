@@ -694,7 +694,7 @@ Scenario: Convert 44.1 kHz input to 48 kHz system reference
 
 ---
 
-#### REQ-F-DARS-003: Capture Range Support
+#### REQ-F-DARS-003: Capture Range Support [Design: DES-DARS-CAPTURE] [Tests: TEST-DARS-CAPTURE-001, TEST-DARS-CAPTURE-002, TEST-DARS-CAPTURE-003]
 
 - **Trace to**: StR-PERF-002, StR-FUNC-001
 - **Priority**: Critical (P0)

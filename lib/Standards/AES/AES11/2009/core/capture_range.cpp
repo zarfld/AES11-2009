@@ -1,0 +1,26 @@
+#include "capture_range.hpp"
+#include <cmath>
+
+namespace AES {
+namespace AES11 {
+namespace _2009 {
+namespace core {
+
+bool CaptureRange::within_capture(double absPpmError, Grade grade) {
+    switch (grade) {
+        case Grade::Grade1: return absPpmError <= 2.0;   // REQ-F-DARS-003 (±2 ppm)
+        case Grade::Grade2: return absPpmError <= 50.0;  // REQ-F-DARS-003 (±50 ppm)
+    }
+    return false;
+}
+
+double CaptureRange::ppm_error(double expectedHz, double measuredHz) {
+    if (expectedHz == 0.0) return std::numeric_limits<double>::infinity();
+    double diff = measuredHz - expectedHz;
+    return std::abs(diff / expectedHz * 1'000'000.0);
+}
+
+} // namespace core
+} // namespace _2009
+} // namespace AES11
+} // namespace AES
