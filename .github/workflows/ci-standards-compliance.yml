@@ -17,13 +17,11 @@ env:
   # Strict linkage targets (authentic, manually authored links only)
   MIN_REQ_LINKAGE_COVERAGE: 90
 
-jobs:
-  # Default permissions needed for uploading SARIF to code scanning; restricted scope
-  # Note: 'security-events: write' is required for upload-sarif. It is safe on internal branches.
-  permissions:
-    contents: read
-    security-events: write
+permissions:
+  contents: read
+  security-events: write
 
+jobs:
   spec-validation:
     name: Spec Structure Validation (Schema & Traceability Prereq)
     runs-on: ubuntu-latest
@@ -73,7 +71,7 @@ jobs:
   # Phase 05: Implementation Quality Checks
   code-quality:
     needs: [spec-generation]
-    name: Code Quality & Standards (IEEE 1016, XP Practices)
+    name: C/C++ Code Quality & Standards (IEEE 1016, XP Practices)
     runs-on: ubuntu-latest
 
     steps:
@@ -82,55 +80,42 @@ jobs:
         with:
           fetch-depth: 0 # Full history for better analysis
 
-      - name: Setup Node.js
-        if: ${{ hashFiles('package.json') != '' }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Install code-quality tooling
+      - name: Install C/C++ quality tools
         run: |
-          if [ -f package.json ]; then
-            echo "Found package.json - installing project deps and global linters"
-            npm ci
-            npm install -g eslint prettier markdownlint-cli
+          sudo apt-get update
+          sudo apt-get install -y clang-format cppcheck python3-pip
+          pip3 install --user lizard mdformat
+
+      - name: Check C/C++ formatting (clang-format)
+        run: |
+          echo "📝 Checking C/C++ formatting with clang-format..."
+          FILES=$(git ls-files "*.c" "*.cc" "*.cpp" "*.cxx" "*.h" "*.hh" "*.hpp" "*.hxx")
+          if [ -n "$FILES" ]; then
+            clang-format -version
+            clang-format -n --Werror $FILES
           else
-            echo "No package.json - installing markdownlint-cli globally for docs checks"
-            npm install -g markdownlint-cli
+            echo "No C/C++ files to format-check"
           fi
 
-      - name: Run linting (Coding Standards)
-        if: ${{ hashFiles('package.json') != '' }}
+      - name: Static analysis (cppcheck)
         run: |
-          echo "🔍 Checking code style compliance (JS/TS)..."
-          npm run lint
+          echo "🔍 Running cppcheck static analysis..."
+          cppcheck --version
+          cppcheck --enable=warning,style,performance,portability --inline-suppr --error-exitcode=1 \
+            --suppress=missingIncludeSystem \
+            lib tests || {
+              echo "❌ cppcheck found issues"; exit 1; }
 
-      - name: Check code formatting
-        if: ${{ hashFiles('package.json') != '' }}
+      - name: Complexity analysis (lizard)
         run: |
-          echo "📝 Checking code formatting..."
-          npm run format:check || {
-            echo "❌ Code formatting issues found"
-            echo "Run 'npm run format' locally to fix"
-            exit 1
-          }
+          echo "📊 Checking cyclomatic complexity with lizard..."
+          ~/.local/bin/lizard -l cpp -C ${{ env.MAX_CYCLOMATIC_COMPLEXITY }} lib tests
 
-      - name: Check Markdown documentation
+      - name: Check Markdown formatting (mdformat)
         run: |
-          echo "📄 Validating Markdown documentation..."
-          markdownlint '**/*.md' --ignore node_modules || {
-            echo "⚠️ Markdown lint issues found (non-blocking)"
-          }
-
-      - name: Complexity analysis
-        if: ${{ hashFiles('package.json') != '' }}
-        run: |
-          echo "📊 Analyzing code complexity..."
-          npx eslint . --ext .ts,.js --max-warnings 0 --rule 'complexity: ["error", ${{ env.MAX_CYCLOMATIC_COMPLEXITY }}]' || {
-            echo "❌ Cyclomatic complexity exceeds ${{ env.MAX_CYCLOMATIC_COMPLEXITY }}"
-            exit 1
-          }
+          echo "📄 Validating Markdown formatting with mdformat (non-blocking)..."
+          ~/.local/bin/mdformat --version
+          ~/.local/bin/mdformat --check . || echo "⚠️ Markdown formatting differences detected"
 
   # Phase 05: TDD - Test-Driven Development
   cxx-implementation:
@@ -263,75 +248,6 @@ jobs:
           name: integrity-scan
           path: build/integrity-scan.json
 
-  # Phase 06: Integration Testing
-  integration-tests:
-    name: Integration Tests (XP - Continuous Integration)
-    runs-on: ubuntu-latest
-    needs: [unit-tests]
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: test_db
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-      redis:
-        image: redis:7
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        if: ${{ hashFiles('package.json') != '' }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Install dependencies
-        if: ${{ hashFiles('package.json') != '' }}
-        run: npm ci
-
-      - name: Run database migrations
-        if: ${{ hashFiles('package.json') != '' }}
-        run: |
-          echo "🗄️ Running database migrations..."
-          npm run db:migrate
-        env:
-          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/test_db
-
-      - name: Run integration tests
-        if: ${{ hashFiles('package.json') != '' }}
-        run: |
-          echo "🔗 Running integration tests..."
-          npm run test:integration
-        env:
-          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/test_db
-          REDIS_URL: redis://localhost:6379
-
-      - name: Upload integration test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-results
-          path: test-results/integration/
-
   # Phase 02: Requirements Traceability Check
   requirements-traceability:
     needs: [spec-validation]
@@ -377,61 +293,6 @@ jobs:
           path: reports/traceability-matrix.md
 
   # Phase 07: Verification & Validation (IEEE 1012)
-  acceptance-tests:
-    name: Acceptance Tests (XP - Customer Tests, IEEE 1012)
-    runs-on: ubuntu-latest
-    needs: [integration-tests]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        if: ${{ hashFiles('package.json') != '' }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Install dependencies
-        if: ${{ hashFiles('package.json') != '' }}
-        run: npm ci
-
-      - name: Install Playwright
-        if: ${{ hashFiles('package.json') != '' }}
-        run: npx playwright install --with-deps
-
-      - name: Build application
-        if: ${{ hashFiles('package.json') != '' }}
-        run: npm run build
-
-      - name: Start application
-        if: ${{ hashFiles('package.json') != '' }}
-        run: |
-          npm run start &
-          echo $! > .app.pid
-          # Wait for app to start
-          npx wait-on http://localhost:3000 -t 60000
-
-      - name: Run acceptance tests (BDD)
-        if: ${{ hashFiles('package.json') != '' }}
-        run: |
-          echo "🎭 Running acceptance tests (Behavior-Driven Development)..."
-          npm run test:acceptance
-
-      - name: Stop application
-        if: always()
-        run: |
-          kill $(cat .app.pid) || true
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: acceptance-test-results
-          path: |
-            test-results/acceptance/
-            playwright-report/
 
   # Phase 03: Architecture Compliance (ISO/IEC/IEEE 42010)
   architecture-validation:
@@ -528,9 +389,7 @@ jobs:
         code-quality,
         cxx-implementation,
         unit-tests,
-        integration-tests,
         requirements-traceability,
-        acceptance-tests,
         architecture-validation,
         security-scan,
       ]
@@ -591,8 +450,8 @@ jobs:
           ## IEEE 1012-2016 - Verification and Validation
 
           - ✅ Unit tests: ${{ needs['unit-tests'].result }}
-          - ✅ Integration tests: ${{ needs['integration-tests'].result }}
-          - ✅ Acceptance tests: ${{ needs['acceptance-tests'].result }}
+          - ✅ Integration tests: N/A (C/C++ only project scope)
+          - ✅ Acceptance tests: N/A (C/C++ only project scope)
           - ✅ Test coverage: >=${{ env.MIN_TEST_COVERAGE }}%
 
           ## XP Practices Compliance
@@ -621,13 +480,13 @@ jobs:
           - Code Quality: ${{ needs['code-quality'].result }}
           - Unit Tests: ${{ needs['unit-tests'].result }}
           - C++ Implementation Tests: ${{ needs['cxx-implementation'].result }}
-          - Integration Tests: ${{ needs['integration-tests'].result }}
-          - Acceptance Tests: ${{ needs['acceptance-tests'].result }}
+          - Integration Tests: N/A
+          - Acceptance Tests: N/A
           - Architecture: ${{ needs['architecture-validation'].result }}
           - Security: ${{ needs['security-scan'].result }}
           - Traceability: ${{ needs['requirements-traceability'].result }}
 
-          **Build Status**: ${{ needs['code-quality'].result == 'success' && needs['unit-tests'].result == 'success' && needs['integration-tests'].result == 'success' && '✅ PASSED' || '❌ FAILED' }}
+          **Build Status**: ${{ needs['code-quality'].result == 'success' && needs['unit-tests'].result == 'success' && '✅ PASSED' || '❌ FAILED' }}
           EOF
 
           cat compliance-report.md
@@ -652,50 +511,3 @@ jobs:
               repo: context.repo.repo,
               body: report
             });
-
-  # Deployment (Phase 08) - only on main branch
-  deploy-staging:
-    name: Deploy to Staging (Phase 08 - Transition)
-    runs-on: ubuntu-latest
-    needs:
-      [
-        code-quality,
-        unit-tests,
-        integration-tests,
-        acceptance-tests,
-        security-scan,
-      ]
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    # Environment metadata omitted until deployment credentials configured
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Build application
-        run: |
-          echo "🏗️ Building application..."
-          npm ci
-          npm run build
-
-      - name: Deploy to staging
-        run: |
-          echo "🚀 Deploying to staging environment..."
-          # Add your deployment commands here
-          # e.g., aws, gcloud, kubectl, etc.
-
-      - name: Run smoke tests
-        run: |
-          echo "💨 Running smoke tests..."
-          npm run test:smoke -- --env=staging
-
-      - name: Notify deployment
-        if: always()
-        run: |
-          echo "📢 Deployment to staging: ${{ job.status }}"
-          # Add notification logic (Slack, email, etc.)
