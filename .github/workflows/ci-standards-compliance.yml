@@ -143,7 +143,7 @@ jobs:
           name: cxx-test-results
           path: build/Testing
   unit-tests:
-    name: Unit Tests (XP - TDD Red-Green-Refactor)
+    name: Unit Tests (XP - TDD Red-Green-Refactor) Debug/Release
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
