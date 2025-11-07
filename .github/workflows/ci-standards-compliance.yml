@@ -2,9 +2,9 @@ name: CI - Standards Compliance & Quality Gates
 
 on:
   push:
-    branches: [main, develop, "feature/**", "release/**"]
+    branches: [main, master, develop, "feature/**", "release/**"]
   pull_request:
-    branches: [main, develop]
+    branches: [main, master, develop]
   schedule:
     # Run daily at 2 AM UTC
     - cron: "0 2 * * 0"
@@ -117,6 +117,27 @@ jobs:
 
   # Phase 05: TDD - Test-Driven Development
   unit-tests:
+  cxx-implementation:
+    name: C++ Standards Layer Build & Tests (Phase 05 TDD)
+    runs-on: ubuntu-latest
+    needs: [spec-generation]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake
+      - name: Configure (CMake)
+        run: cmake -S . -B build -DBUILD_TESTS=ON
+      - name: Build
+        run: cmake --build build -- -j$(nproc)
+      - name: Run C++ tests
+        run: ctest --test-dir build --output-on-failure || { echo "❌ C++ tests failed"; exit 1; }
+      - name: Upload C++ test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cxx-test-results
+          path: build/Testing
     name: Unit Tests (XP - TDD Red-Green-Refactor)
     runs-on: ubuntu-latest
     steps:
@@ -523,7 +544,8 @@ jobs:
 
           | Metric | Target | Status |
           |--------|--------|--------|
-          | Test Coverage | ≥80% | ${{ needs.unit-tests.result == 'success' && '✅' || '❌' }} |
+          | JS/TS Test Coverage | ≥80% | ${{ needs.unit-tests.result == 'success' && '✅' || '❌' }} |
+          | C++ Build & Tests | PASS | ${{ needs.cxx-implementation.result == 'success' && '✅' || '❌' }} |
           | Cyclomatic Complexity | ≤10 | ${{ needs.code-quality.result == 'success' && '✅' || '❌' }} |
           | Linting | 0 errors | ${{ needs.code-quality.result == 'success' && '✅' || '❌' }} |
           | Security Vulnerabilities | 0 high/critical | ${{ needs.security-scan.result == 'success' && '✅' || '⚠️' }} |
@@ -533,6 +555,7 @@ jobs:
 
           - Code Quality: ${{ needs.code-quality.result }}
           - Unit Tests: ${{ needs.unit-tests.result }}
+          - C++ Implementation Tests: ${{ needs.cxx-implementation.result }}
           - Integration Tests: ${{ needs.integration-tests.result }}
           - Acceptance Tests: ${{ needs.acceptance-tests.result }}
           - Architecture: ${{ needs.architecture-validation.result }}
