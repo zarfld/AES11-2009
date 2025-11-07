@@ -11,7 +11,7 @@
 #include <cstdint>
 #include <atomic>
 
-#include "../../../Common/interfaces/clock_interface.hpp"
+#include "../../../../Common/interfaces/clock_interface.hpp"
 
 namespace AES {
 namespace AES11 {

@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "lib/Standards/AES/AES11/2009/core/timing_snapshot_service.hpp"
+#include "../../lib/Standards/AES/AES11/2009/core/timing_snapshot_service.hpp"
 #include <chrono>
 
 // Simple mock clock providing deterministic monotonic behavior
