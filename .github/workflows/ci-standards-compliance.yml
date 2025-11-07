@@ -92,7 +92,8 @@ jobs:
           FILES=$(git ls-files "*.c" "*.cc" "*.cpp" "*.cxx" "*.h" "*.hh" "*.hpp" "*.hxx")
           if [ -n "$FILES" ]; then
             clang-format -version
-            clang-format -n --Werror $FILES
+            # Enforce repository style; ensure .clang-format is honored
+            clang-format -n --Werror -style=file $FILES
           else
             echo "No C/C++ files to format-check"
           fi
