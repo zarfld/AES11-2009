@@ -20,7 +20,8 @@ bool CaptureRange::within_capture(double absPpmError, Grade grade) {
 }
 
 double CaptureRange::ppm_error(double expectedHz, double measuredHz) {
-    if (expectedHz == 0.0) return std::numeric_limits<double>::infinity(); // REQ-F-DARS-003 safeguard
+    if (expectedHz == 0.0)
+        return std::numeric_limits<double>::infinity(); // REQ-F-DARS-003 safeguard
     double diff = measuredHz - expectedHz;
     return std::abs(diff / expectedHz * 1'000'000.0);
 }
