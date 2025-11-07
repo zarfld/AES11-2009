@@ -4289,6 +4289,737 @@ Scenario: Reproducible build with version pinning
 
 ---
 
+## 4. Non-Functional Requirements
+
+Non-functional requirements define quality attributes, performance characteristics, and constraints for the AES-11 DARS system per ISO/IEC 25010:2011 Quality Model.
+
+### 4.1 Performance Requirements
+
+Requirements for system performance characteristics per StR-PERF-xxx.
+
+#### REQ-NF-PERF-001: Real-Time Processing Latency
+
+- **Trace to**: StR-PERF-001, StR-FUNC-001
+- **Priority**: Critical (P0)
+
+**Description**: The system shall process DARS generation and synchronization operations with deterministic real-time latency not exceeding 1.0 ms (48 samples at 48 kHz) from audio input to output under all operating conditions.
+
+**Rationale**: AES-11-2009 Section 5.1 requires DARS systems to maintain sample-accurate synchronization. Professional audio systems require <1 ms latency for live monitoring and real-time applications to prevent audible delays.
+
+**Performance Behavior**:
+
+1. DARS frame generation latency shall be ≤500 μs (24 samples at 48 kHz)
+2. Synchronization state machine update latency shall be ≤200 μs
+3. Error detection and handling latency shall be ≤100 μs
+4. End-to-end processing latency (input → DARS → output) shall be ≤1000 μs
+5. Latency variation (jitter) shall be <10 μs peak-to-peak
+6. System shall maintain latency requirements under 50% CPU load
+7. System shall report latency violations via diagnostic interface
+
+**Code Interface**:
+```cpp
+// Real-time performance monitoring
+namespace AES {
+namespace AES11 {
+namespace _2009 {
+namespace performance {
+
+struct LatencyMetrics {
+    double dars_generation_latency_us;    // DARS generation time
+    double sync_update_latency_us;        // Sync state machine update time
+    double error_handling_latency_us;     // Error handling overhead
+    double end_to_end_latency_us;         // Total processing latency
+    double latency_jitter_us;             // Peak-to-peak jitter
+    uint64_t latency_violations;          // Count of >1 ms violations
+};
+
+class LatencyMonitor {
+public:
+    // Get current latency metrics
+    LatencyMetrics get_latency_metrics() const;
+    
+    // Check if latency requirements are met
+    bool verify_latency_requirements() const;
+    
+    // Get maximum observed latency since startup
+    double get_max_latency_us() const;
+};
+
+} // namespace performance
+} // namespace _2009
+} // namespace AES11
+} // namespace AES
+```
+
+**Performance Targets**:
+
+| Metric | Target | Threshold | Unit | Reference |
+|--------|--------|-----------|------|-----------|
+| DARS Generation Latency | 300 | 500 | μs | AES-11 real-time requirement |
+| Sync Update Latency | 100 | 200 | μs | State machine responsiveness |
+| Error Handling Latency | 50 | 100 | μs | Fault tolerance requirement |
+| End-to-End Latency | 700 | 1000 | μs | Professional audio standard |
+| Latency Jitter | 3 | 10 | μs | Timing stability requirement |
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Verify DARS generation latency under nominal load
+  Given AES-11 system initialized with 48 kHz sample rate
+  And CPU load is 25%
+  When DARS frame generation is measured over 10,000 iterations
+  Then average latency shall be ≤300 μs
+  And maximum latency shall be ≤500 μs
+  And 99th percentile latency shall be ≤450 μs
+
+Scenario: Verify end-to-end latency compliance
+  Given audio input signal applied at DARS input
+  When signal propagates through DARS generation and output stages
+  Then total processing latency shall be ≤1000 μs
+  And latency shall be deterministic within ±10 μs
+  And latency metrics shall be reported via diagnostic interface
+
+Scenario: Detect and report latency violations
+  Given system operating under 75% CPU load
+  And occasional processing spikes occur
+  When DARS generation exceeds 500 μs threshold
+  Then latency violation counter shall increment
+  And violation event shall be logged with timestamp
+  And system shall not drop audio samples
+
+Scenario: Maintain latency under high CPU load
+  Given background processes consuming 50% CPU
+  When DARS system processes 1000 consecutive frames
+  Then maximum latency shall remain ≤1000 μs
+  And latency jitter shall remain <10 μs peak-to-peak
+```
+
+**Dependencies**: REQ-F-DARS-001 (DARS generation), REQ-F-HAL-002 (timing interface)
+
+**Verification Method**: Test (real-time latency measurement with oscilloscope and logic analyzer)
+
+---
+
+#### REQ-NF-PERF-002: Throughput and Sample Rate Support
+
+- **Trace to**: StR-PERF-001, StR-FUNC-002
+- **Priority**: Critical (P0)
+
+**Description**: The system shall support all AES5-2018 standard sampling frequencies (32 kHz, 44.1 kHz, 48 kHz, 96 kHz, 192 kHz) with sustained throughput maintaining sample-accurate timing without buffer overruns or underruns.
+
+**Rationale**: AES-11-2009 Section 5.1.6 requires DARS support for all AES5 standard frequencies. Professional audio systems must sustain continuous operation at maximum sample rates without dropouts.
+
+**Performance Behavior**:
+
+1. System shall sustain 192 kHz sample rate for ≥24 hours continuous operation
+2. System shall process all AES5 rates simultaneously in multi-rate applications
+3. System shall maintain zero buffer overruns/underruns during rate transitions
+4. System shall support sample rate changes within 100 ms settling time
+5. System shall report throughput metrics (samples/second, buffer fill levels)
+6. System shall allocate sufficient buffer depth for worst-case latency scenarios
+7. System shall detect and report throughput degradation >5% from nominal
+
+**Performance Targets**:
+
+| Sample Rate | Target Throughput | CPU Load | Memory | Reference |
+|-------------|------------------|----------|--------|-----------|
+| 32 kHz | 32000 samples/sec | <5% | 512 KB | AES5-2018 |
+| 44.1 kHz | 44100 samples/sec | <7% | 512 KB | AES5-2018 |
+| 48 kHz | 48000 samples/sec | <7% | 512 KB | AES5-2018 |
+| 96 kHz | 96000 samples/sec | <12% | 1 MB | AES5-2018 |
+| 192 kHz | 192000 samples/sec | <20% | 2 MB | AES5-2018 |
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Sustain 192 kHz sample rate for 24 hours
+  Given AES-11 system configured for 192 kHz operation
+  When system operates continuously for 24 hours
+  Then actual throughput shall be 192000 ±10 samples/sec
+  And zero buffer overruns shall occur
+  And zero buffer underruns shall occur
+  And CPU load shall remain <20%
+```
+
+**Dependencies**: REQ-F-DARS-008 (sampling frequency validation), REQ-F-HAL-001 (audio interface)
+
+**Verification Method**: Test (sustained operation tests, throughput measurement, stress testing)
+
+---
+
+#### REQ-NF-PERF-003: Timing Accuracy and Jitter
+
+- **Trace to**: StR-PERF-002, StR-FUNC-001
+- **Priority**: Critical (P0)
+
+**Description**: The system shall maintain timing accuracy within ±1 ppm (Grade 1) or ±10 ppm (Grade 2) per AES-11-2009 Section 5.2, with clock jitter <10 ns peak-to-peak per Section 6 requirements.
+
+**Rationale**: AES-11-2009 defines strict timing accuracy grades for DARS systems. Grade 1 systems require ±1 ppm for broadcast facilities; Grade 2 allows ±10 ppm for standalone applications.
+
+**Performance Targets**:
+
+| Grade | Frequency Accuracy | Clock Jitter | Reference |
+|-------|-------------------|--------------|-----------|
+| Grade 1 | ±1 ppm | <10 ns p-p | AES-11 Section 5.2.1 |
+| Grade 2 | ±10 ppm | <10 ns p-p | AES-11 Section 5.2.2 |
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Verify Grade 1 timing accuracy with GPS reference
+  Given AES-11 system configured for Grade 1 operation
+  And GPS-disciplined oscillator provides reference
+  When timing accuracy is measured over 1000 seconds
+  Then measured accuracy shall be within ±1.0 ppm
+  And 99% of measurements shall be within ±0.5 ppm
+```
+
+**Dependencies**: REQ-F-DARS-002 (frequency accuracy), REQ-F-CONFORM-003 (jitter testing)
+
+**Verification Method**: Test (frequency counter measurement, jitter analysis with oscilloscope)
+
+---
+
+#### REQ-NF-PERF-004: Resource Utilization
+
+- **Trace to**: StR-PERF-003, StR-COMP-001
+- **Priority**: High (P1)
+
+**Description**: The system shall operate within defined resource limits: CPU utilization <25%, memory footprint <50 MB, and minimal power consumption to enable deployment on embedded and battery-powered audio devices.
+
+**Rationale**: Professional audio equipment ranges from high-performance workstations to embedded devices. Resource efficiency enables broad platform support.
+
+**Performance Targets**:
+
+| Resource | Target | Maximum | Unit |
+|----------|--------|---------|------|
+| CPU Utilization (48 kHz) | 15 | 25 | % |
+| Memory Footprint | 30 | 50 | MB |
+| Power Consumption | 300 | 500 | mW |
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Verify CPU utilization on embedded platform
+  Given AES-11 system deployed on 1 GHz ARM Cortex-A processor
+  And sample rate configured to 48 kHz
+  When system operates for 60 seconds under nominal load
+  Then average CPU utilization shall be <25%
+  And peak CPU utilization shall be <35%
+```
+
+**Dependencies**: REQ-F-HAL-005 (memory management), REQ-F-ERROR-006 (resource monitoring)
+
+**Verification Method**: Test (profiling tools, power measurement, embedded platform testing)
+
+---
+
+#### REQ-NF-PERF-005: Scalability and Concurrency
+
+- **Trace to**: StR-PERF-004, StR-COMP-003
+- **Priority**: Medium (P2)
+
+**Description**: The system shall support concurrent operation of multiple DARS instances (up to 8 simultaneous streams) with linear performance scaling and thread-safe operation in multi-core environments.
+
+**Rationale**: Professional audio facilities require multiple synchronized DARS streams. Multi-core architectures enable parallel DARS generation.
+
+**Performance Targets**:
+
+| Instances | Total CPU | Per-Instance Latency | Memory Total |
+|-----------|-----------|---------------------|--------------|
+| 1 | <25% | <1 ms | <50 MB |
+| 4 | <85% | <1.2 ms | <170 MB |
+| 8 | <95% | <1.5 ms | <320 MB |
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Verify linear scaling with multiple instances
+  Given quad-core processor platform
+  When 4 DARS instances are created with 48 kHz sample rate
+  Then each instance shall consume <22% CPU
+  And total CPU utilization shall be <85%
+```
+
+**Dependencies**: REQ-F-HAL-007 (thread safety), REQ-NF-PERF-004 (resource utilization)
+
+**Verification Method**: Test (multi-instance stress testing, thread safety analysis)
+
+---
+
+### 4.2 Reliability Requirements
+
+Requirements for system reliability and fault tolerance per IEEE 1633-2016 Software Reliability Engineering and StR-REL-xxx.
+
+#### REQ-NF-REL-001: Mean Time Between Failures (MTBF)
+
+- **Trace to**: StR-REL-001, StR-QUAL-001
+- **Priority**: Critical (P0)
+
+**Description**: The system shall achieve Mean Time Between Failures (MTBF) ≥10,000 hours (416 days) for critical DARS generation and synchronization functions, calculated per IEEE 1633-2016 reliability prediction models.
+
+**Rationale**: IEEE 1633-2016 requires quantitative reliability targets. Professional broadcast facilities require 24/7/365 operation. MTBF ≥10,000 hours enables >99.9% availability.
+
+**Reliability Targets**:
+
+| Component | MTBF Target | Failure Rate | Availability |
+|-----------|-------------|--------------|--------------|
+| DARS Generation | ≥10,000 hours | <0.0001/hour | >99.9% |
+| Synchronization | ≥10,000 hours | <0.0001/hour | >99.9% |
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Verify MTBF target through accelerated life testing
+  Given 10 AES-11 systems under accelerated test conditions
+  And test duration is 1,000 hours per system (10,000 total hours)
+  When 1 failure occurs during testing
+  Then calculated MTBF shall be 10,000 hours
+  And reliability target shall be met
+```
+
+**Dependencies**: REQ-F-ERROR-001 (error detection), REQ-F-ERROR-004 (fault tolerance)
+
+**Verification Method**: Analysis (reliability prediction modeling, accelerated life testing)
+
+---
+
+#### REQ-NF-REL-002: Availability and Uptime
+
+- **Trace to**: StR-REL-001, StR-REL-002
+- **Priority**: Critical (P0)
+
+**Description**: The system shall achieve ≥99.9% availability (maximum 8.76 hours downtime per year) for DARS generation services through fault tolerance, automatic recovery, and redundancy support.
+
+**Rationale**: Professional broadcast facilities require high availability for critical audio infrastructure. 99.9% availability is achievable target for single-unit configuration.
+
+**Availability Targets**:
+
+| Configuration | Availability | Max Downtime/Year |
+|---------------|-------------|-------------------|
+| Single Unit | 99.9% | 8.76 hours |
+| Redundant Pair | 99.99% | 52.56 minutes |
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Verify 99.9% availability over one year
+  Given AES-11 system deployed January 1, 2025
+  And system operates until December 31, 2025 (365 days)
+  And total downtime is 7.5 hours due to 3 failure events
+  When availability is calculated
+  Then availability shall be 99.914% (exceeds 99.9% target)
+```
+
+**Dependencies**: REQ-NF-REL-001 (MTBF), REQ-F-ERROR-004 (fault tolerance)
+
+**Verification Method**: Test (long-duration testing, failover testing), Analysis (availability calculation)
+
+---
+
+#### REQ-NF-REL-003: Error Recovery and Fault Tolerance
+
+- **Trace to**: StR-REL-002, StR-REL-003
+- **Priority**: Critical (P0)
+
+**Description**: The system shall automatically detect and recover from ≥95% of transient errors without manual intervention, implementing fault tolerance mechanisms per IEEE 1633-2016 fault tolerance taxonomy.
+
+**Rationale**: IEEE 1633-2016 Section 5.4 defines fault tolerance as system's ability to continue operation despite faults. Professional audio systems must recover automatically from transient errors.
+
+**Recovery Targets**:
+
+| Fault Type | Detection Time | Recovery Time | Success Rate |
+|------------|---------------|---------------|--------------|
+| Transient | <100 ms | <1 second | >98% |
+| Intermittent | <500 ms | <5 seconds | >90% |
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Automatically recover from GPS reference loss
+  Given DARS system using GPS-referenced synchronization
+  When GPS signal is lost for 30 seconds (transient fault)
+  Then system shall detect loss within 100 ms
+  And system shall switch to audio input reference within 500 ms
+  And DARS generation shall continue uninterrupted
+```
+
+**Dependencies**: REQ-F-ERROR-001 (error detection), REQ-F-ERROR-004 (fault tolerance)
+
+**Verification Method**: Test (fault injection testing, recovery time measurement)
+
+---
+
+#### REQ-NF-REL-004: Data Integrity and Consistency
+
+- **Trace to**: StR-REL-003, StR-QUAL-002
+- **Priority**: High (P1)
+
+**Description**: The system shall maintain data integrity for all DARS generation and configuration data with error detection (CRC-32) and validation mechanisms preventing corruption during operation and storage.
+
+**Rationale**: Corrupt timing data or configuration can cause systematic timing errors affecting entire audio facility. Data integrity mechanisms prevent silent data corruption.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Detect configuration data corruption
+  Given DARS configuration stored with CRC-32 checksum
+  When bit flip occurs in configuration memory
+  Then CRC validation shall detect corruption
+  And system shall reject corrupted configuration
+  And fallback to last known good configuration
+```
+
+**Dependencies**: REQ-F-ERROR-001 (error detection)
+
+**Verification Method**: Test (data corruption injection, CRC validation testing)
+
+---
+
+#### REQ-NF-REL-005: Graceful Degradation
+
+- **Trace to**: StR-REL-002, StR-USER-003
+- **Priority**: High (P1)
+
+**Description**: The system shall implement graceful degradation maintaining essential DARS generation when non-critical subsystems fail, with clear indication of reduced capabilities to operators.
+
+**Rationale**: Complete system failure due to non-critical component failure is unacceptable in professional audio. Graceful degradation maintains service continuity.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Maintain DARS generation when diagnostics fail
+  Given diagnostic subsystem encounters fatal error
+  When diagnostics are disabled
+  Then DARS generation shall continue normally
+  And operator shall be notified "Diagnostics unavailable"
+  And system shall operate in degraded mode
+```
+
+**Dependencies**: REQ-F-ERROR-004 (fault tolerance), REQ-F-ERROR-005 (error notification)
+
+**Verification Method**: Test (subsystem isolation testing, degraded mode operation)
+
+---
+
+#### REQ-NF-REL-006: Reliability Testing and Validation
+
+- **Trace to**: StR-REL-003, StR-QUAL-003
+- **Priority**: Medium (P2)
+
+**Description**: The system shall undergo comprehensive reliability testing including burn-in testing (168 hours), accelerated life testing, and statistical reliability validation per IEEE 1633-2016 testing protocols.
+
+**Rationale**: IEEE 1633-2016 requires empirical reliability validation. Testing uncovers early-life failures and validates reliability predictions.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Complete 168-hour burn-in test
+  Given new AES-11 system
+  When burn-in test executes for 168 continuous hours
+  Then zero critical failures shall occur
+  And burn-in test shall pass
+  And system ready for deployment
+```
+
+**Dependencies**: All REQ-NF-REL-xxx requirements
+
+**Verification Method**: Test (burn-in testing, accelerated life testing per IEEE 1633-2016)
+
+---
+
+### 4.3 Security Requirements
+
+Requirements for system security and robustness per StR-SEC-xxx.
+
+#### REQ-NF-SEC-001: Input Validation and Sanitization
+
+- **Trace to**: StR-SEC-001, StR-REL-003
+- **Priority**: High (P1)
+
+**Description**: The system shall validate and sanitize all external inputs (audio data, configuration parameters, API calls) to prevent buffer overflows, integer overflows, and injection attacks.
+
+**Rationale**: Invalid inputs can cause crashes, undefined behavior, or security vulnerabilities. Input validation is first line of defense against malformed data.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Reject invalid sample rate parameter
+  Given API call to set sample rate
+  When invalid value 999999 Hz provided
+  Then input validation shall reject value
+  And error "INVALID_SAMPLE_RATE" shall be returned
+  And system shall maintain current valid configuration
+```
+
+**Dependencies**: REQ-F-ERROR-001 (error detection)
+
+**Verification Method**: Test (fuzzing, boundary value testing, negative testing)
+
+---
+
+#### REQ-NF-SEC-002: Resource Limits and DoS Prevention
+
+- **Trace to**: StR-SEC-001, StR-PERF-003
+- **Priority**: High (P1)
+
+**Description**: The system shall enforce resource limits (maximum instances, memory allocation, CPU usage) to prevent resource exhaustion and denial-of-service conditions.
+
+**Rationale**: Unbounded resource consumption can cause system instability. Resource limits ensure system remains responsive under adverse conditions.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Enforce maximum DARS instance limit
+  Given 8 DARS instances already running (system limit)
+  When request to create 9th instance is made
+  Then request shall be rejected with "RESOURCE_LIMIT_EXCEEDED"
+  And existing instances shall continue operating
+```
+
+**Dependencies**: REQ-NF-PERF-004 (resource utilization), REQ-NF-PERF-005 (scalability)
+
+**Verification Method**: Test (resource exhaustion testing, stress testing)
+
+---
+
+#### REQ-NF-SEC-003: Secure Coding Practices
+
+- **Trace to**: StR-SEC-001, StR-QUAL-002
+- **Priority**: Medium (P2)
+
+**Description**: The system implementation shall follow secure coding practices per CERT C/C++ guidelines including bounds checking, safe string operations, and static analysis tool validation.
+
+**Rationale**: Secure coding practices prevent common vulnerabilities (buffer overflows, use-after-free, null pointer dereferences). Static analysis tools detect defects early.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Pass static analysis with zero critical defects
+  Given complete AES-11 codebase
+  When static analysis tools execute (Coverity, clang-tidy)
+  Then zero critical security defects shall be reported
+  And zero high-priority defects shall be reported
+```
+
+**Dependencies**: All implementation requirements
+
+**Verification Method**: Analysis (static analysis tools, code review, CERT C/C++ compliance audit)
+
+---
+
+#### REQ-NF-SEC-004: Audit Logging for Security Events
+
+- **Trace to**: StR-SEC-001, StR-USER-003
+- **Priority**: Medium (P2)
+
+**Description**: The system shall log all security-relevant events (configuration changes, access attempts, input validation failures) with tamper-evident audit trail for forensic analysis.
+
+**Rationale**: Security audit logs enable detection of attacks, forensic analysis, and compliance validation. Tamper-evident logging prevents log modification.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Log configuration change with audit trail
+  Given administrator changes DARS Grade from Grade 2 to Grade 1
+  When configuration change is applied
+  Then audit log shall record: timestamp, user, old value, new value
+  And log entry shall include cryptographic hash
+  And audit trail shall be tamper-evident
+```
+
+**Dependencies**: REQ-F-ERROR-003 (logging)
+
+**Verification Method**: Test (audit log validation, tamper detection testing)
+
+---
+
+### 4.4 Maintainability Requirements
+
+Requirements for system maintainability and supportability per StR-MAINT-xxx.
+
+#### REQ-NF-MAINT-001: Code Modularity and Structure
+
+- **Trace to**: StR-COMP-002, StR-QUAL-002
+- **Priority**: High (P1)
+
+**Description**: The system shall implement modular architecture with clear separation of concerns, well-defined interfaces, and layered structure (Standards/Service/HAL) enabling independent module development and testing.
+
+**Rationale**: Modular architecture improves maintainability, testability, and enables parallel development. Clear interfaces reduce coupling and change propagation.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Verify module independence
+  Given DARS protocol module (Standards layer)
+  When module is compiled independently
+  Then compilation shall succeed without HAL dependencies
+  And module shall be testable in isolation
+```
+
+**Dependencies**: All REQ-F-INTEG-xxx requirements (architecture boundaries)
+
+**Verification Method**: Inspection (architecture review), Test (independent module compilation)
+
+---
+
+#### REQ-NF-MAINT-002: Documentation Completeness
+
+- **Trace to**: StR-USER-003, StR-QUAL-002
+- **Priority**: High (P1)
+
+**Description**: The system shall provide comprehensive documentation including API documentation, architecture guides, user manuals, and inline code documentation (Doxygen) with ≥90% API coverage.
+
+**Rationale**: Complete documentation reduces maintenance time, enables knowledge transfer, and supports third-party integration. Doxygen provides automated documentation generation.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Verify API documentation coverage
+  Given complete AES-11 codebase
+  When Doxygen documentation is generated
+  Then ≥90% of public APIs shall be documented
+  And all public functions shall have parameter descriptions
+  And all public functions shall have return value documentation
+```
+
+**Dependencies**: All implementation requirements
+
+**Verification Method**: Analysis (Doxygen coverage analysis), Inspection (documentation review)
+
+---
+
+#### REQ-NF-MAINT-003: Testability and Debug Support
+
+- **Trace to**: StR-QUAL-002, StR-QUAL-003
+- **Priority**: High (P1)
+
+**Description**: The system shall provide comprehensive test support including unit test hooks, mock interfaces, debug logging levels, and diagnostic commands enabling effective troubleshooting and validation.
+
+**Rationale**: Testability is essential for quality assurance and maintenance. Debug support reduces mean time to diagnose and repair failures.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Execute unit tests with mock interfaces
+  Given DARS generation module under test
+  When unit tests execute with mock audio HAL
+  Then tests shall run without physical hardware
+  And all DARS generation behaviors shall be verifiable
+```
+
+**Dependencies**: REQ-F-ERROR-006 (diagnostics), REQ-F-CONFORM-004 (test automation)
+
+**Verification Method**: Test (unit test coverage measurement, mock interface validation)
+
+---
+
+#### REQ-NF-MAINT-004: Change Impact Analysis
+
+- **Trace to**: StR-COMP-002, StR-QUAL-002
+- **Priority**: Medium (P2)
+
+**Description**: The system shall support automated change impact analysis through traceability matrices, dependency graphs, and test coverage mapping enabling assessment of change risks.
+
+**Rationale**: Change impact analysis predicts which components are affected by changes, enabling targeted testing and risk assessment. Reduces regression defects.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Analyze impact of requirement change
+  Given REQ-F-DARS-002 (frequency accuracy) is modified
+  When impact analysis tool executes
+  Then tool shall identify affected modules: DARS generation, timing HAL
+  And tool shall identify required tests: timing accuracy tests
+  And tool shall generate impact report
+```
+
+**Dependencies**: Traceability matrix, test coverage data
+
+**Verification Method**: Analysis (impact analysis tool validation)
+
+---
+
+### 4.5 Portability Requirements
+
+Requirements for platform portability and standards compliance per StR-COMP-xxx.
+
+#### REQ-NF-PORT-001: Platform Independence
+
+- **Trace to**: StR-COMP-001, StR-COMP-003
+- **Priority**: Critical (P0)
+
+**Description**: The system shall compile and execute correctly on multiple platforms (Windows x64, Linux x64/ARM, macOS x64/ARM, embedded RTOS) using standard C11/C++17 without platform-specific code in Standards layer.
+
+**Rationale**: AES-11 implementation must be portable across diverse audio equipment. Platform independence enables maximum market reach and prevents vendor lock-in.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Compile Standards layer on all target platforms
+  Given AES-11 Standards layer source code
+  When compiled on Windows, Linux, macOS, and RTOS platforms
+  Then compilation shall succeed on all platforms
+  And zero platform-specific #ifdefs shall exist in Standards layer
+```
+
+**Dependencies**: REQ-F-HAL-001 through REQ-F-HAL-007 (HAL abstraction)
+
+**Verification Method**: Test (multi-platform compilation, cross-platform testing)
+
+---
+
+#### REQ-NF-PORT-002: Compiler and Toolchain Support
+
+- **Trace to**: StR-COMP-001, StR-COMP-002
+- **Priority**: High (P1)
+
+**Description**: The system shall compile with multiple compilers (GCC ≥9.0, Clang ≥10.0, MSVC ≥19.20) without compiler-specific extensions, adhering to ISO C11/C++17 standards.
+
+**Rationale**: Compiler independence prevents vendor lock-in and enables use of best-available toolchain for each platform. Standards compliance ensures portability.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Compile with GCC, Clang, and MSVC
+  Given AES-11 source code
+  When compiled with GCC 11, Clang 14, MSVC 19.30
+  Then compilation shall succeed with all three compilers
+  And zero compiler-specific warnings shall be generated
+```
+
+**Dependencies**: REQ-NF-PORT-001 (platform independence)
+
+**Verification Method**: Test (multi-compiler build validation, CI/CD testing)
+
+---
+
+#### REQ-NF-PORT-003: Standards Compliance
+
+- **Trace to**: StR-COMP-002, StR-FUNC-004
+- **Priority**: Critical (P0)
+
+**Description**: The system shall comply with applicable standards including AES-11-2009, AES3-2009, AES5-2018, IEEE 29148:2018 (requirements), IEEE 1016-2009 (design), and IEEE 1633-2016 (reliability).
+
+**Rationale**: Standards compliance ensures interoperability, quality, and industry acceptance. Certification requires demonstrated compliance with AES-11 and supporting standards.
+
+**Gherkin Acceptance Criteria**:
+
+```gherkin
+Scenario: Pass AES-11-2009 compliance test suite
+  Given complete AES-11 implementation
+  When AES-11 Section 5 compliance tests execute
+  Then all mandatory tests shall pass
+  And certification evidence package shall be generated
+  And AES compliance shall be documented
+```
+
+**Dependencies**: REQ-F-CONFORM-001 (Section 5 tests), REQ-F-CONFORM-005 (certification)
+
+**Verification Method**: Test (standards compliance testing), Inspection (certification audit)
+
+---
+
 ## Status: Phase 02 In Progress
 
 ✅ **Completed**:
