@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a simple traceability matrix skeleton and orphan report.
+r"""Generate a simple traceability matrix skeleton and orphan report.
 Parses markdown files for ID patterns and produces:
  - reports/traceability-matrix.md (basic table placeholders)
  - reports/orphans.md (lists missing link elements)

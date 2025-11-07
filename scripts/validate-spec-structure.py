@@ -32,7 +32,7 @@ SCHEMA_MAP = {
     # 'guidance' intentionally has no strict schema – treated leniently
 }
 
-FRONT_MATTER_RE = re.compile(r'^---\n(.*?)\n---', re.DOTALL)
+FRONT_MATTER_RE = re.compile(r'^---\r?\n(.*?)\r?\n---', re.DOTALL)
 
 class ValidationIssue(t.NamedTuple):
     file: pathlib.Path
@@ -87,6 +87,10 @@ def validate_spec(path: pathlib.Path) -> tuple[list[ValidationIssue], list[str]]
         return issues, warnings
     meta = parse_yaml_block(fm_raw)
     if meta is None:
+        # Treat files declaring guidance in front matter text leniently (even if YAML parse fails due to line endings)
+        if 'specType' in fm_raw and 'guidance' in fm_raw:
+            warnings.append(f"ℹ️ {path.relative_to(ROOT)}: invalid YAML in guidance file (ignored)")
+            return [], warnings
         if is_guidance(path, None):
             warnings.append(f"ℹ️ {path.relative_to(ROOT)}: invalid YAML in guidance file (ignored)")
             return [], warnings

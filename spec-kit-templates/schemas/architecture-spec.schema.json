@@ -17,7 +17,11 @@
       "properties": {
         "requirements": {
           "type": "array",
-          "items": {"type": "string", "pattern": "^REQ-(?:[A-Z]{4}-)?(?:F|NF)-[0-9]{3}$"},
+          "description": "List of requirement IDs this architecture artifact addresses. Supports extended hierarchical IDs (e.g., REQ-F-DARS-001, REQ-NF-PERF-001).",
+          "items": {
+            "type": "string",
+            "pattern": "^REQ-(?:[A-Z]+-)*(?:F|NF)-(?:[A-Z]+-)*[0-9]{3}$"
+          },
           "minItems": 1
         }
       }
