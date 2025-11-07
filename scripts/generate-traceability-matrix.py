@@ -48,6 +48,9 @@ PATTERNS = {
     'design_data': re.compile(r'DES-D-\d{3}'),
 }
 
+# Source file extensions to scan for design and requirement references
+SOURCE_EXTENSIONS = {'.hpp', '.h', '.cpp', '.c', '.cc', '.py', '.ts', '.js'}
+
 def is_guidance(path: pathlib.Path, text: str) -> bool:
     """Check if a file should be excluded from traceability scanning.
     
@@ -121,6 +124,30 @@ for path in files:
             index[key].add(match)
             occurrence[key][match].add(path)
 
+# --- Source scanning for traceability (DES-* and REQ-* inside code) ---
+source_design_map: dict[str, set[pathlib.Path]] = defaultdict(set)  # design id -> source paths
+source_requirement_map: dict[str, set[pathlib.Path]] = defaultdict(set)  # requirement id -> source paths
+
+for src in ROOT.rglob('*'):
+    if not src.is_file():
+        continue
+    if src.suffix not in SOURCE_EXTENSIONS:
+        continue
+    # Skip build / external / node_modules
+    if any(part in src.parts for part in ('build', 'node_modules', '.git')):
+        continue
+    try:
+        content = src.read_text(encoding='utf-8', errors='ignore')
+    except Exception:
+        continue
+    # Find design IDs in source
+    for design_key in ('design_component', 'design_interface', 'design_data'):
+        for match in PATTERNS[design_key].findall(content):
+            source_design_map[match].add(src)
+    # Direct requirement references in source (e.g., comments tagging REQ-F-001)
+    for req_match in PATTERNS['requirement'].findall(content):
+        source_requirement_map[req_match].add(src)
+
 # Simple linkage inference
 req_links = defaultdict(set)  # requirement -> linked identifiers (adr/component/scenario/test)
 for adr in index['adr']:
@@ -162,6 +189,20 @@ for design_key in ('design_component', 'design_interface', 'design_data'):
                 continue
             for req in PATTERNS['requirement'].findall(t):
                 req_links[req].add(des)
+
+# Propagate source files via design linkage (DES-* -> SRC:<path>)
+for req, links in list(req_links.items()):
+    design_ids = [l for l in links if re.match(r'^DES-(C|I|D)-\d{3}$', l)]
+    for did in design_ids:
+        for src_path in source_design_map.get(did, set()):
+            rel = src_path.relative_to(ROOT).as_posix()
+            req_links[req].add(f'SRC:{rel}')
+
+# Direct requirement source references (REQ-* inside code)
+for req_id, paths in source_requirement_map.items():
+    for p in paths:
+        rel = p.relative_to(ROOT).as_posix()
+        req_links[req_id].add(f'SRC:{rel}')
 
 # Link using YAML front matter if available: use document id -> relatedRequirements
 for p, meta in front_matter_meta.items():
@@ -269,6 +310,7 @@ def categorize_links(links: set[str]) -> dict[str, list[str]]:
         'Design Data Models': [],
         'Scenarios': [],
         'Tests': [],
+        'Source Files': [],
     }
     for l in sorted(links):
         if re.match(r'^ADR-', l):
@@ -285,6 +327,8 @@ def categorize_links(links: set[str]) -> dict[str, list[str]]:
             cats['Scenarios'].append(l)
         elif re.match(r'^TEST-', l):
             cats['Tests'].append(l)
+        elif re.match(r'^SRC:', l):
+            cats['Source Files'].append(l)
     return cats
 
 for section_title, pattern in sections:
@@ -294,7 +338,7 @@ for section_title, pattern in sections:
     matrix_lines.append(f'## {section_title}')
     matrix_lines.append('')
     matrix_lines.append('| Requirement | ADRs | Architecture Components | Design Components | Design Interfaces | Design Data Models | Scenarios | Tests | All Linked |')
-    matrix_lines.append('|-------------|------|-------------------------|-------------------|-------------------|--------------------|-----------|-------|-----------|')
+    matrix_lines.append('|-------------|------|-------------------------|-------------------|-------------------|--------------------|-----------|-------|-------------|-----------|')
     for req in section_reqs:
         raw_links = req_links.get(req, set())
         cats = categorize_links(raw_links)
@@ -302,7 +346,7 @@ for section_title, pattern in sections:
             return ', '.join(cats[key]) if cats[key] else ''
         all_flat = ', '.join(sorted(raw_links)) if raw_links else ''
         matrix_lines.append(
-            f"| {req} | {fmt('ADR')} | {fmt('Architecture')} | {fmt('Design Components')} | {fmt('Design Interfaces')} | {fmt('Design Data Models')} | {fmt('Scenarios')} | {fmt('Tests')} | {all_flat or '(none)'} |"
+            f"| {req} | {fmt('ADR')} | {fmt('Architecture')} | {fmt('Design Components')} | {fmt('Design Interfaces')} | {fmt('Design Data Models')} | {fmt('Scenarios')} | {fmt('Tests')} | {fmt('Source Files')} | {all_flat or '(none)'} |"
         )
     matrix_lines.append('')
 
