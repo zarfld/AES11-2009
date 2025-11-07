@@ -235,15 +235,22 @@ fn_total, fn_linked, fn_cov = group_counts(r'^REQ-(?:[A-Z]{4}-)?F-')
 nf_total, nf_linked, nf_cov = group_counts(r'^REQ-(?:[A-Z]{4}-)?NF-')
 
 matrix_lines = [
-    '# Traceability Matrix (Heuristic Draft)',
+    '# Traceability Matrix (Categorized)',
     '',
     '## Summary',
     '',
     f'- Requirements total: {total_reqs}',
-    f'- Requirements linked: {linked_reqs}',
-    f'- Coverage: {coverage:.1f}%',
-    f'- Functional: {fn_linked}/{fn_total} ({fn_cov:.1f}%)',
-    f'- Non-Functional: {nf_linked}/{nf_total} ({nf_cov:.1f}%)',
+    f'- Requirements linked (≥1 element): {linked_reqs}',
+    f'- Overall Coverage: {coverage:.1f}%',
+    f'- Functional Coverage: {fn_linked}/{fn_total} ({fn_cov:.1f}%)',
+    f'- Non-Functional Coverage: {nf_linked}/{nf_total} ({nf_cov:.1f}%)',
+    '',
+    '### Legend',
+    '- ADR: Architecture Decision Record',
+    '- ARC-C: Architecture Components',
+    '- DES-C/I/D: Design Component / Interface / Data Model',
+    '- QA-SC: Quality Scenario',
+    '- TEST: Verification and Validation Spec',
     '',
 ]
 
@@ -253,17 +260,50 @@ sections = [
     ('Other Requirements', r'^(?!REQ-(?:[A-Z]{4}-)?(?:F|NF)-)')
 ]
 
+def categorize_links(links: set[str]) -> dict[str, list[str]]:
+    cats = {
+        'ADR': [],
+        'Architecture': [],
+        'Design Components': [],
+        'Design Interfaces': [],
+        'Design Data Models': [],
+        'Scenarios': [],
+        'Tests': [],
+    }
+    for l in sorted(links):
+        if re.match(r'^ADR-', l):
+            cats['ADR'].append(l)
+        elif re.match(r'^ARC-C-', l):
+            cats['Architecture'].append(l)
+        elif re.match(r'^DES-C-\d{3}$', l):
+            cats['Design Components'].append(l)
+        elif re.match(r'^DES-I-\d{3}$', l):
+            cats['Design Interfaces'].append(l)
+        elif re.match(r'^DES-D-\d{3}$', l):
+            cats['Design Data Models'].append(l)
+        elif re.match(r'^QA-SC-', l):
+            cats['Scenarios'].append(l)
+        elif re.match(r'^TEST-', l):
+            cats['Tests'].append(l)
+    return cats
+
 for section_title, pattern in sections:
     section_reqs = sorted([r for r in index['requirement'] if re.search(pattern, r)], key=req_sort_key)
     if not section_reqs:
         continue
     matrix_lines.append(f'## {section_title}')
     matrix_lines.append('')
-    matrix_lines.append('| Requirement | Linked Elements (ADR / Architecture / Design / Scenario / Test) |')
-    matrix_lines.append('|-------------|----------------------------------------------------|')
+    matrix_lines.append('| Requirement | ADRs | Architecture Components | Design Components | Design Interfaces | Design Data Models | Scenarios | Tests | All Linked |')
+    matrix_lines.append('|-------------|------|-------------------------|-------------------|-------------------|--------------------|-----------|-------|-----------|')
     for req in section_reqs:
-        linked = ', '.join(sorted(req_links.get(req, []))) or '(none)'
-        matrix_lines.append(f'| {req} | {linked} |')
+        raw_links = req_links.get(req, set())
+        cats = categorize_links(raw_links)
+        def fmt(key):
+            return ', '.join(cats[key]) if cats[key] else ''
+        all_flat = ', '.join(sorted(raw_links)) if raw_links else ''
+        matrix_lines.append(
+            f"| {req} | {fmt('ADR')} | {fmt('Architecture')} | {fmt('Design Components')} | {fmt('Design Interfaces')} | {fmt('Design Data Models')} | {fmt('Scenarios')} | {fmt('Tests')} | {all_flat or '(none)'} |"
+        )
     matrix_lines.append('')
 
 (REPORTS / 'traceability-matrix.md').write_text('\n'.join(matrix_lines), encoding='utf-8')
