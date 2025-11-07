@@ -22,7 +22,8 @@ TEST(CaptureRangeTests, Grade2Boundary) {
 // TEST-DARS-CAPTURE-003: ppm_error computes absolute difference correctly
 TEST(CaptureRangeTests, PpmErrorComputation) {
     double expected = 48000.0;
-    double measured = 48000.048; // +1ppm approx (48/48000*1e6 = 1000)
+    // 1000 ppm = 0.001 * expected = 48.0 Hz difference -> measured = 48000 + 48 = 48048.0
+    double measured = 48048.0; // +1000 ppm (48/48000 * 1e6 = 1000)
     double ppm = CaptureRange::ppm_error(expected, measured);
-    EXPECT_NEAR(ppm, 1000.0, 5.0);
+    EXPECT_NEAR(ppm, 1000.0, 0.5);
 }
