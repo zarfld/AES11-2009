@@ -15,7 +15,8 @@ public:
         // Simulate nanosecond progression tied to tick
         return tick_ * 1'000'000ULL; // 1 ms per tick for test simplicity
     }
-private:
+
+  private:
     uint64_t tick_ = 0;
 };
 
@@ -63,11 +64,12 @@ TEST(TimingSnapshotServiceTests, SequenceGrowthNoWrapInRange) {
 // Verifies: REQ-NF-REL-004
 // TEST-TIMESRC-SNAPSHOT-004: Concurrent snapshots yield unique sequences
 TEST(TimingSnapshotServiceTests, ConcurrentSnapshotsYieldUniqueSequences) {
-    class ThreadClock : public Common::interfaces::ClockInterface {
-    public:
+        class ThreadClock : public Common::interfaces::ClockInterface {
+            public:
         uint64_t get_tick() override { return ++tick_; }
-        uint64_t get_time_ns() override { return ++time_ns_; }
-    private:
+                uint64_t get_time_ns() override { return ++time_ns_; }
+
+            private:
         std::atomic<uint64_t> tick_{0};
         std::atomic<uint64_t> time_ns_{0};
     };

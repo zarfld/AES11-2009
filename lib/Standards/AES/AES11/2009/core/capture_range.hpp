@@ -31,10 +31,14 @@ namespace core {
  */
 class CaptureRange {
 public:
-    enum class Grade : uint8_t { Grade1, Grade2 };
+    enum class Grade : uint8_t {
+        Grade1, // Professional (tight tolerance)
+        Grade2  // Broadcast (wider tolerance)
+    };
 
     // Returns true if absolute ppm error is within capture range for grade.
-    // Grade 1: ±2 ppm (capture); Grade 2: ±50 ppm (capture)
+    // Grade 1: ±2 ppm (capture)
+    // Grade 2: ±50 ppm (capture)
     static bool within_capture(double absPpmError, Grade grade);
 
     // Compute absolute ppm error from expected/measured Hz.
