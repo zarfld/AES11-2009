@@ -221,6 +221,9 @@ Requirements for core Digital Audio Reference Signal protocol implementation per
 #### REQ-F-DARS-001: DARS Format Compliance
 
 - **Trace to**: StR-FUNC-001, StR-COMP-001
+- **Related ADRs**: ADR-001, ADR-002, ADR-003, ADR-004
+- **Related Design**: DES-C-001, DES-I-001, DES-D-001
+- **Verification (Tests)**: TEST-DARS-STATE-001
 - **Priority**: Critical (P0)
 - **AES-11 Reference**: Section 5.1.1
 
@@ -229,6 +232,7 @@ Requirements for core Digital Audio Reference Signal protocol implementation per
 **Rationale**: AES-11-2009 Section 5.1.1 mandates DARS use AES3 format or minimal preamble-only structure for maximum compatibility.
 
 **Functional Behavior**:
+
 1. System shall accept AES3-compliant DARS signals via HAL audio interface
 2. System shall parse X/Y/Z preambles per AES3 specification
 3. System shall extract Timing Reference Point (TRP) from X or Z preamble initial transition
@@ -238,12 +242,14 @@ Requirements for core Digital Audio Reference Signal protocol implementation per
 7. System shall validate frame alignment within specified tolerances
 
 **Boundary Values**:
+
 - **Input DARS Format**: Full AES3 frame (192 bits) OR preamble-only (8 bits + padding)
 - **Preamble Detection Threshold**: Valid X/Y/Z pattern per AES3-3-2009 Section 7
 - **Frame Period**: 32 kHz = 31.25 µs, 44.1 kHz = 22.68 µs, 48 kHz = 20.83 µs, 96 kHz = 10.41 µs (per AES-11 Table 2)
 - **Channel Status Byte 4 bits 0-1**: 00=default, 01=Grade 1, 10=Grade 2, 11=reserved
 
 **Error Handling**:
+
 | Error Condition | System Action | User Notification | Log Level |
 |----------------|---------------|-------------------|-----------|
 | Invalid preamble pattern | Reject frame, maintain previous lock | `DARS_ERROR_INVALID_PREAMBLE` | ERROR |
@@ -252,6 +258,7 @@ Requirements for core Digital Audio Reference Signal protocol implementation per
 | Frame alignment violation | Trigger realignment, count violations | `DARS_WARNING_FRAME_MISALIGNMENT` | WARNING |
 
 **Acceptance Criteria**:
+
 ```gherkin
 Scenario: Parse valid Grade 1 DARS signal
   Given a DARS signal with Grade 1 identification (channel status byte 4 = 01)
@@ -297,6 +304,9 @@ Scenario: Reject invalid preamble pattern
 #### REQ-F-DARS-002: Grade 1/2 Frequency Accuracy
 
 - **Trace to**: StR-PERF-001, StR-FUNC-001
+- **Related ADRs**: ADR-003, ADR-004
+- **Related Design**: DES-C-001, DES-D-002
+- **Verification (Tests)**: TEST-SYNC-HOLDOVER-001
 - **Priority**: Critical (P0)
 - **AES-11 Reference**: Section 5.2.1
 
@@ -305,6 +315,7 @@ Scenario: Reject invalid preamble pattern
 **Rationale**: AES-11-2009 Section 5.2.1 defines two performance grades enabling different studio requirements (multi-studio complex vs single studio).
 
 **Functional Behavior**:
+
 1. System shall provide configuration option to select Grade 1 or Grade 2 operation mode
 2. When configured as Grade 1, system shall maintain frequency accuracy ±1 ppm over 24-hour stability period
 3. When configured as Grade 2, system shall maintain frequency accuracy ±10 ppm over 24-hour stability period
@@ -314,6 +325,7 @@ Scenario: Reject invalid preamble pattern
 7. System shall reject external DARS exceeding grade specifications during lock acquisition
 
 **Boundary Values**:
+
 - **Grade 1 Frequency Tolerance**: ±1 ppm of nominal sampling frequency
   - At 48 kHz: ±0.048 Hz (47.999952 Hz to 48.000048 Hz)
   - At 44.1 kHz: ±0.0441 Hz (44.0999559 Hz to 44.1000441 Hz)
@@ -324,6 +336,7 @@ Scenario: Reject invalid preamble pattern
 - **Temperature Range**: Per manufacturer operating specifications (typically 0°C to 50°C)
 
 **Error Handling**:
+
 | Error Condition | System Action | User Notification | Log Level |
 |----------------|---------------|-------------------|-----------|
 | Frequency drift exceeds grade | Enter warning state, continue operation | `DARS_WARNING_FREQUENCY_DRIFT` | WARNING |
@@ -332,6 +345,7 @@ Scenario: Reject invalid preamble pattern
 | Temperature exceeds operating range | Report environmental error | `DARS_ERROR_ENVIRONMENTAL_LIMIT` | CRITICAL |
 
 **Acceptance Criteria**:
+
 ```gherkin
 Scenario: Grade 1 frequency accuracy over 24 hours
   Given system configured as Grade 1 DARS generator
@@ -370,10 +384,12 @@ Scenario: Grade mismatch warning
 ```
 
 **Dependencies**:
+
 - **External**: High-precision reference clock (atomic clock, GPS receiver, or oven-controlled crystal oscillator)
 - **Internal**: REQ-F-HAL-002 (timing interface), REQ-NF-PERF-001 (frequency measurement precision)
 
-**Verification Method**: 
+**Verification Method**:
+
 - Laboratory measurement with frequency counter (precision 0.01 ppm minimum)
 - 24-hour stability test with temperature logging
 - Conformance test suite Grade 1/2 validation scenarios
@@ -392,6 +408,9 @@ Requirements for the 4 synchronization methods per AES-11-2009 Section 4.2.
 #### REQ-F-SYNC-001: DARS-Referenced Synchronization
 
 - **Trace to**: StR-FUNC-001
+- **Related ADRs**: ADR-002, ADR-003, ADR-004
+- **Related Design**: DES-C-002, DES-I-003, DES-D-002
+- **Verification (Tests)**: TEST-SYNC-SELECT-001, TEST-SYNC-RESELECT-001, TEST-SYNC-HOLDOVER-001, TEST-SYNC-DEGRADE-001
 - **Priority**: Critical (P0)
 - **AES-11 Reference**: Section 4.2.1
 
@@ -400,6 +419,7 @@ Requirements for the 4 synchronization methods per AES-11-2009 Section 4.2.
 **Rationale**: DARS-referenced is the preferred method for normal studio practice per AES-11 Section 4.2.1, providing systematic synchronization across multiple equipment.
 
 **Functional Behavior**:
+
 1. System shall accept external DARS signal via dedicated HAL audio interface input
 2. System shall lock internal sample clock generator to DARS frequency within capture range (REQ-F-DARS-003)
 3. System shall maintain phase relationship within ±5% of AES3 frame period for all outputs (per Section 5.3.1.1)
@@ -409,6 +429,7 @@ Requirements for the 4 synchronization methods per AES-11-2009 Section 4.2.
 7. System shall measure and report phase offset relative to DARS TRP
 
 **Boundary Values**:
+
 - **Phase Tolerance (Output)**: ±5% of AES3 frame period (per AES-11 Table 2)
   - At 48 kHz: ±1.0 µs (±18° of 360° frame)
   - At 96 kHz: ±0.5 µs (±18° of 360° frame)
@@ -417,6 +438,7 @@ Requirements for the 4 synchronization methods per AES-11-2009 Section 4.2.
 - **Multi-rate Support**: Lock 96/192 kHz equipment to 48 kHz DARS with correct 2:1 or 4:1 relationship
 
 **Error Handling**:
+
 | Error Condition | System Action | User Notification | Log Level |
 |----------------|---------------|-------------------|-----------|
 | DARS signal lost | Enter LOST_LOCK state, hold last frequency | `SYNC_WARNING_DARS_LOST` | WARNING |
@@ -425,6 +447,7 @@ Requirements for the 4 synchronization methods per AES-11-2009 Section 4.2.
 | Frequency outside capture range | Reject DARS, report out-of-range | `SYNC_ERROR_FREQUENCY_OUT_OF_CAPTURE` | ERROR |
 
 **Acceptance Criteria**:
+
 ```gherkin
 Scenario: Lock to Grade 1 DARS and maintain phase tolerance
   Given system in UNLOCKED state
@@ -466,9 +489,12 @@ Scenario: Handle DARS frequency outside capture range
 ```
 
 **Dependencies**:
+
 - **Internal**: REQ-F-DARS-001 (DARS format), REQ-F-DARS-002 (frequency accuracy), REQ-F-DARS-003 (capture range), REQ-F-HAL-001 (audio interface), REQ-NF-PERF-003 (phase tolerance)
 
-**Verification Method**: 
+
+**Verification Method**:
+
 - Lock acquisition timing measurement with oscilloscope
 - Phase relationship verification with dual-channel analyzer
 - Multi-rate lock validation (48→96→192 kHz cascades)
@@ -487,6 +513,7 @@ Scenario: Handle DARS frequency outside capture range
 **Rationale**: AES-11-2009 Section 4.2.2 defines audio-input-referenced synchronization as alternative method where equipment locks to incoming program audio. Section 5.3.1.2 specifies ±25% input phase tolerance while warning of cascaded error accumulation in multi-device chains.
 
 **Functional Behavior**:
+
 1. System shall extract embedded clock from incoming AES3 audio frames
 2. System shall lock sample clock to extracted input clock frequency
 3. System shall track cumulative phase error in cascaded synchronization chains
@@ -496,6 +523,7 @@ Scenario: Handle DARS frequency outside capture range
 7. System shall provide input signal quality metrics via diagnostic API
 
 **Data Structures**:
+
 ```c
 typedef struct {
     // Input clock extraction
@@ -521,6 +549,7 @@ typedef struct {
 ```
 
 **Boundary Values**:
+
 | Parameter | Minimum | Typical | Maximum | Unit | Reference |
 |-----------|---------|---------|---------|------|-----------|
 | Input phase tolerance | -25% | 0 | +25% | % frame period | Section 5.3.1.2 |
@@ -531,6 +560,7 @@ typedef struct {
 | Fallback trigger time | 0 | 200 | 500 | ms | Implementation |
 
 **Error Handling**:
+
 | Error Condition | System Action | Notification | Log Level |
 |----------------|---------------|--------------|-----------|
 | Input signal missing | Trigger fallback to DARS | `SYNC_WARNING_INPUT_LOST` | WARNING |
@@ -541,6 +571,7 @@ typedef struct {
 | Input clock invalid | Reject input, log | `SYNC_ERROR_INVALID_INPUT_CLOCK` | ERROR |
 
 **Acceptance Criteria**:
+
 ```gherkin
 Scenario: Lock to audio input embedded clock at 48 kHz
   Given system supports audio-input-referenced synchronization
@@ -585,10 +616,12 @@ Scenario: Report input signal quality metrics
 ```
 
 **Dependencies**:
+
 - **Internal**: REQ-F-DARS-001 (AES3 frame parsing for clock extraction), REQ-F-SYNC-001 (DARS reference for fallback)
 - **External**: AES3-2009 repository for frame format
 
 **Verification Method**: Test (cascaded error accumulation tests, input signal stability tests, fallback trigger timing tests, jitter injection tests)
+
 
 ---
 
