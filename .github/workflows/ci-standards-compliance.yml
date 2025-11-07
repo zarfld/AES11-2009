@@ -143,7 +143,7 @@ jobs:
           name: cxx-test-results
           path: build/Testing
   unit-tests:
-    name: Unit Tests (XP - TDD Red-Green-Refactor) Debug/Release
+    name: Unit Tests (XP - TDD Red-Green-Refactor)
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -155,44 +155,44 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        if: ${{ hashFiles('package.json') != '' }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+      # Linux toolchain
+      - name: Install build tools (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build
 
-      - name: Install dependencies
-        if: ${{ hashFiles('package.json') != '' }}
-        run: npm ci
+      # macOS toolchain
+      - name: Install build tools (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install ninja cmake || true
+
+      # Windows toolchain
+      - name: Install build tools (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install ninja -y --no-progress
+
+      - name: Configure (CMake + Ninja)
+        run: |
+          cmake -S . -B build -G Ninja -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: |
+          cmake --build build -- -k 0
 
       - name: Run unit tests
-        if: ${{ hashFiles('package.json') != '' }}
         run: |
-          echo "🧪 Running unit tests (TDD practice)..."
-          npm test -- --coverage --watchAll=false
+          ctest --test-dir build --output-on-failure
 
-      - name: Check test coverage
-        if: ${{ hashFiles('package.json') != '' }}
-        run: |
-          echo "📊 Checking test coverage threshold..."
-          COVERAGE=$(npm test -- --coverage --watchAll=false --silent | grep 'All files' | awk '{print $10}' | sed 's/%//')
-          echo "Current coverage: ${COVERAGE}%"
-
-          if (( $(echo "$COVERAGE < ${{ env.MIN_TEST_COVERAGE }}" | bc -l) )); then
-            echo "❌ Test coverage ${COVERAGE}% is below minimum ${{ env.MIN_TEST_COVERAGE }}%"
-            exit 1
-          else
-            echo "✅ Test coverage ${COVERAGE}% meets minimum requirement"
-          fi
-
-      - name: Upload coverage reports
-        if: ${{ hashFiles('package.json') != '' }}
-        uses: codecov/codecov-action@v4
+      - name: Upload C++ test results
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          files: ./coverage/lcov.info
-          flags: unittests
-          name: codecov-umbrella
+          name: unit-test-results-${{ matrix.os }}
+          path: build/Testing
 
   traceability-coverage:
     name: Traceability Coverage Enforcement
