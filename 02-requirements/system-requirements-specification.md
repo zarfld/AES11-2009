@@ -1,10 +1,10 @@
 ---
 specType: requirements
-standard: 29148
+standard: "29148"
 phase: 02-requirements
-version: 1.0.0
-author: AI Assistant
-date: 2025-11-07
+version: "1.0.0"
+author: "AI Assistant"
+date: "2025-11-07"
 status: draft
 traceability:
   stakeholderRequirements:
