@@ -1097,6 +1097,114 @@ Scenario: Handle leap second indication
 
 ---
 
+#### REQ-F-DARS-008: Sampling Frequency Validation and AES5 Compliance
+
+- **Trace to**: StR-COMP-001, StR-PERF-001
+- **Priority**: Critical (P0)
+
+**Description**: The system shall validate all sampling frequencies against AES5-2018 standard definitions and reject non-compliant rates per AES-11 Section 5.1.6, ensuring interoperability with professional audio equipment.
+
+**Rationale**: AES-11 Section 5.1.6 mandates DARS shall operate at AES5 standard sampling frequencies. Non-standard rates cause interoperability failures, clock synchronization issues, and non-compliant equipment behavior. Validation prevents configuration errors and ensures standards compliance.
+
+**Functional Behavior**:
+
+1. System shall validate sampling frequency against AES5-2018 standard rates on configuration
+2. System shall support standard rates: 32000, 44100, 48000, 96000, 192000 Hz
+3. System shall reject non-standard rates with specific error code `AES11_ERROR_INVALID_SAMPLE_RATE`
+4. System shall validate frequency accuracy within AES5 tolerance (±10 ppm initial, ±1 ppm Grade 1, ±10 ppm Grade 2)
+5. System shall provide sample rate conversion guidance for non-standard sources
+6. System shall log all sample rate validation attempts (pass/fail) for compliance auditing
+7. System shall integrate with AES5-2018 repository for authoritative rate definitions (no hardcoded values)
+
+**AES5-2018 Standard Sampling Frequencies** (from external repository):
+```c
+// Use AES5-2018 repository definitions - DO NOT hardcode
+#include "AES/AES5/2018/rates/standard_sampling_rates.hpp"
+
+using AES::AES5::_2018::rates::StandardSamplingRates;
+
+bool validate_sample_rate(uint32_t sample_rate_hz) {
+    // Query AES5-2018 repository for compliance
+    if (!StandardSamplingRates::is_standard_rate(sample_rate_hz)) {
+        log_error(AES11_ERROR_INVALID_SAMPLE_RATE, 
+                  "Sample rate %u Hz not in AES5-2018 standard", 
+                  sample_rate_hz);
+        return false;
+    }
+    
+    // Validate frequency accuracy
+    float measured_freq = measure_actual_frequency();
+    float tolerance_ppm = get_grade_tolerance_ppm();  // ±1 or ±10 ppm
+    
+    if (!is_within_tolerance(measured_freq, sample_rate_hz, tolerance_ppm)) {
+        log_error(AES11_ERROR_FREQUENCY_OUT_OF_TOLERANCE,
+                  "Measured %.3f Hz exceeds ±%.1f ppm tolerance",
+                  measured_freq, tolerance_ppm);
+        return false;
+    }
+    
+    return true;
+}
+```
+
+**Validation Error Handling**:
+| Error Condition | Error Code | System Action | User Guidance |
+|----------------|------------|---------------|---------------|
+| Non-AES5 rate (e.g., 47999 Hz) | `AES11_ERROR_INVALID_SAMPLE_RATE` | Reject configuration | "Use AES5 standard: 32000, 44100, 48000, 96000, 192000 Hz" |
+| Frequency out of tolerance | `AES11_ERROR_FREQUENCY_OUT_OF_TOLERANCE` | Log warning, continue | "Measured frequency exceeds AES5 tolerance, check clock source" |
+| Unsupported multi-rate relationship | `AES11_ERROR_INVALID_RATE_RELATIONSHIP` | Reject lock attempt | "DARS at 48 kHz cannot lock device at 44.1 kHz (non-integer ratio)" |
+
+**Boundary Values**:
+| Parameter | Minimum | Typical | Maximum | Unit | Reference |
+|-----------|---------|---------|---------|------|-----------|
+| Standard rates | 32000 | 48000 | 192000 | Hz | AES5-2018 |
+| Initial tolerance | ±1 | ±5 | ±10 | ppm | AES5 |
+| Grade 1 accuracy | ±0.5 | ±0.8 | ±1.0 | ppm | AES-11 Sec 5.2 |
+| Grade 2 accuracy | ±5 | ±8 | ±10 | ppm | AES-11 Sec 5.2 |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Accept standard AES5 sampling frequency
+  Given system configured for 48000 Hz operation
+  When validate_sample_rate(48000) is called
+  Then validation shall query AES5-2018 repository
+  And StandardSamplingRates::is_standard_rate(48000) shall return true
+  And validation shall PASS with no errors
+  And system shall accept 48000 Hz configuration
+
+Scenario: Reject non-standard sampling frequency
+  Given user attempts to configure 47999 Hz (non-standard)
+  When validate_sample_rate(47999) is called
+  Then StandardSamplingRates::is_standard_rate(47999) shall return false
+  And error AES11_ERROR_INVALID_SAMPLE_RATE shall be logged
+  And validation shall FAIL
+  And user guidance shall recommend "Use AES5 standard rates: 32k, 44.1k, 48k, 96k, 192k Hz"
+
+Scenario: Validate frequency accuracy within Grade 1 tolerance
+  Given DARS configured for 48000 Hz Grade 1 (±1 ppm)
+  And measured frequency is 48000.04 Hz (+0.83 ppm)
+  When frequency accuracy validation runs
+  Then measured error 0.83 ppm shall be within Grade 1 limit ±1.0 ppm
+  And validation shall PASS
+  And no warnings shall be logged
+
+Scenario: Warn when frequency exceeds tolerance
+  Given DARS configured for 48000 Hz Grade 1 (±1 ppm)
+  And measured frequency is 48000.06 Hz (+1.25 ppm, exceeds ±1.0 ppm)
+  When frequency accuracy validation runs
+  Then error AES11_ERROR_FREQUENCY_OUT_OF_TOLERANCE shall be logged
+  And warning shall indicate "Exceeds Grade 1 tolerance, degraded to Grade 2"
+  And system shall continue operation in Grade 2 mode
+```
+
+**Dependencies**:
+- **External**: AES5-2018 repository (https://github.com/zarfld/AES5-2018.git)
+- **Internal**: REQ-F-INTEG-002 (AES5 integration), REQ-F-ERROR-001 (error codes)
+
+**Verification Method**: Test (standard rate validation, non-standard rejection, frequency accuracy measurement, AES5 repository integration)
+
+---
+
 ### 3.2 Synchronization Requirements (continued)
 
 #### REQ-F-SYNC-004: Cascaded System Error Propagation Limits
