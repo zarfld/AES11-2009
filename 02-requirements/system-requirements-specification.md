@@ -286,6 +286,7 @@ Scenario: Reject invalid preamble pattern
 ```
 
 **Dependencies**:
+
 - **External**: AES3-2009 repository for preamble detection and frame format parsing
 - **Internal**: REQ-F-HAL-001 (audio interface), REQ-NF-PERF-001 (timing precision)
 
@@ -1619,6 +1620,342 @@ Scenario: Lock status LED output for diagnostics
 - **External**: Platform GPIO hardware with timestamp capture capability
 
 **Verification Method**: Test (edge timestamp accuracy with signal generator, callback latency measurement, LED output timing)
+
+---
+
+#### REQ-F-HAL-005: Memory Management Interface Abstraction
+
+- **Trace to**: StR-FUNC-002, StR-PERF-004
+- **Priority**: High (P1)
+
+**Description**: The system shall provide platform-independent memory management interface supporting both dynamic allocation (desktop) and static/pool allocation (embedded) without memory leaks or fragmentation affecting real-time audio performance.
+
+**Rationale**: Embedded audio systems (ARM Cortex-M7) prohibit dynamic allocation in real-time paths due to non-deterministic timing and fragmentation risks. Desktop systems benefit from dynamic allocation. HAL abstraction enables same protocol code on both platforms.
+
+**Functional Behavior**:
+
+1. System shall define `memory_hal_t` interface for allocation/deallocation operations
+2. System shall support dynamic allocation mode (malloc/free wrappers for desktop)
+3. System shall support static pre-allocated pool mode (embedded systems)
+4. System shall track memory usage statistics (allocated, freed, peak usage)
+5. System shall detect memory leaks in debug builds (allocation tracking)
+6. System shall provide memory allocation failure callbacks for error handling
+7. System shall guarantee allocation/deallocation operations complete within 10 µs (embedded)
+
+**Memory HAL Interface**:
+```c
+typedef enum {
+    MEM_POOL_AUDIO_FRAMES,    // AES3 frame buffers
+    MEM_POOL_SYNC_STATE,      // Synchronization state machines
+    MEM_POOL_ERROR_LOG,       // Error log entries
+    MEM_POOL_CHANNEL_STATUS   // Channel status buffers
+} memory_pool_id_t;
+
+typedef struct memory_hal {
+    /* Allocate memory (returns NULL on failure) */
+    void* (*alloc)(size_t size_bytes, memory_pool_id_t pool);
+    
+    /* Free previously allocated memory */
+    void (*free)(void* ptr, memory_pool_id_t pool);
+    
+    /* Get memory usage statistics */
+    int (*get_stats)(memory_pool_id_t pool, memory_stats_t* stats);
+    
+    /* Register allocation failure callback */
+    int (*register_oom_callback)(oom_callback_t callback, void* context);
+} memory_hal_t;
+
+typedef struct {
+    uint32_t total_bytes;       // Total pool size
+    uint32_t allocated_bytes;   // Currently allocated
+    uint32_t peak_allocated;    // Peak usage
+    uint32_t allocation_count;  // Number of active allocations
+    uint32_t oom_count;         // Out-of-memory failures
+} memory_stats_t;
+```
+
+**Platform Implementations**:
+
+**Desktop (Dynamic)**:
+```c
+static void* desktop_alloc(size_t size, memory_pool_id_t pool) {
+    return malloc(size);  // Direct malloc wrapper
+}
+
+static void desktop_free(void* ptr, memory_pool_id_t pool) {
+    free(ptr);
+}
+```
+
+**Embedded (Static Pool)**:
+```c
+// Pre-allocated pools at compile time
+static uint8_t audio_frame_pool[10 * sizeof(aes3_frame_t)];  // 10 frames
+static uint8_t sync_state_pool[5 * sizeof(sync_state_t)];   // 5 states
+
+static void* embedded_alloc(size_t size, memory_pool_id_t pool) {
+    // Pool allocator implementation (fixed-size blocks, no fragmentation)
+    return pool_allocate(pools[pool], size);
+}
+```
+
+**Boundary Values**:
+| Parameter | Minimum | Typical | Maximum | Unit | Reference |
+|-----------|---------|---------|---------|------|-----------|
+| Alloc/free time | 0 | 5 | 10 | µs | Embedded RT |
+| Audio frame pool | 2 | 10 | 32 | frames | Buffer depth |
+| Memory overhead | 0 | 10 | 20 | % | Pool metadata |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Desktop dynamic allocation
+  Given system running on x86-64 Windows
+  When protocol code calls memory_hal->alloc(1024, MEM_POOL_AUDIO_FRAMES)
+  Then memory shall be allocated via malloc()
+  And allocation shall succeed if heap space available
+  And get_stats() shall show allocated_bytes += 1024
+
+Scenario: Embedded static pool allocation
+  Given system running on ARM Cortex-M7 embedded target
+  And audio_frame_pool has 10 frames pre-allocated
+  When protocol code calls memory_hal->alloc(sizeof(aes3_frame_t), MEM_POOL_AUDIO_FRAMES)
+  Then memory shall be allocated from static pool (no malloc)
+  And allocation shall complete within 10 µs
+  And allocation_count shall increment
+  And no heap fragmentation shall occur
+
+Scenario: Detect memory leak in debug build
+  Given debug memory tracking enabled
+  When protocol allocates 5 audio frames
+  And protocol frees only 4 frames
+  Then memory leak detector shall identify 1 leaked allocation
+  And leak report shall show allocation site (file:line)
+  And leak size shall be sizeof(aes3_frame_t)
+```
+
+**Dependencies**:
+- **Internal**: REQ-F-ERROR-001 (OOM error reporting)
+- **External**: Platform memory subsystem (malloc/free or custom allocator)
+
+**Verification Method**: Test (allocation/deallocation timing, leak detection, pool exhaustion handling, fragmentation analysis)
+
+---
+
+#### REQ-F-HAL-006: Platform Capabilities Discovery Interface
+
+- **Trace to**: StR-FUNC-002, StR-COMP-001
+- **Priority**: Medium (P2)
+
+**Description**: The system shall provide runtime platform capabilities discovery interface enabling protocol code to query hardware features (hardware timestamping, DMA support, SIMD instructions) and adapt behavior without compile-time configuration.
+
+**Rationale**: Different audio platforms support different acceleration features (x86 SSE/AVX, ARM NEON, hardware DMA). Runtime discovery enables single binary to optimize performance across platforms while maintaining compatibility with minimal-capability systems.
+
+**Functional Behavior**:
+
+1. System shall provide `platform_hal_capabilities_t` structure describing platform features
+2. System shall query capabilities once at initialization via `get_platform_capabilities()`
+3. System shall support capability flags: hardware_timestamps, dma_support, simd_support, fpu_present
+4. System shall provide CPU architecture identification (ARM Cortex-M7, x86-64, etc.)
+5. System shall provide platform timing characteristics (TSC frequency, timer resolution)
+6. System shall allow protocol code to select optimized code paths based on capabilities
+7. System shall log platform capabilities at startup for diagnostics
+
+**Platform Capabilities Interface**:
+```c
+typedef struct {
+    /* CPU Architecture */
+    const char* cpu_arch;          // "ARM Cortex-M7", "x86-64", "ARM64"
+    uint32_t cpu_frequency_mhz;    // CPU clock frequency
+    
+    /* Hardware Features */
+    bool hardware_timestamps;      // Sub-microsecond HW timestamps available
+    bool dma_support;              // DMA available for audio transfers
+    bool simd_support;             // SIMD instructions (SSE/AVX/NEON)
+    bool fpu_present;              // Hardware floating-point unit
+    
+    /* Timing Characteristics */
+    uint64_t timer_frequency_hz;   // High-resolution timer frequency
+    uint32_t timer_resolution_ns;  // Minimum timer resolution
+    
+    /* Memory */
+    uint32_t cache_line_size;      // CPU cache line size (32/64 bytes)
+    bool has_mmu;                  // Memory Management Unit present
+} platform_capabilities_t;
+
+int get_platform_capabilities(platform_capabilities_t* caps);
+```
+
+**Capability-Based Optimization Example**:
+```c
+// Protocol code adapts based on capabilities
+void dars_process_frame(const aes3_frame_t* frame) {
+    if (platform_caps.hardware_timestamps) {
+        // Use hardware timestamps for <1 µs accuracy
+        uint64_t hw_timestamp = timing_hal->get_hw_timestamp();
+    } else {
+        // Fallback to software timestamps (~100 µs accuracy)
+        uint64_t sw_timestamp = timing_hal->get_monotonic_time();
+    }
+    
+    if (platform_caps.simd_support) {
+        // SIMD-optimized sample rate conversion
+        asrc_process_simd(frame);
+    } else {
+        // Scalar fallback
+        asrc_process_scalar(frame);
+    }
+}
+```
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Discover x86-64 desktop capabilities
+  Given system running on Intel Core i7 x86-64 Windows
+  When get_platform_capabilities(&caps) is called
+  Then caps.cpu_arch shall be "x86-64"
+  And caps.hardware_timestamps shall be true (TSC available)
+  And caps.dma_support shall be false (user-space, no DMA)
+  And caps.simd_support shall be true (AVX2 available)
+  And caps.timer_frequency_hz shall be ~3000000000 (3 GHz TSC)
+
+Scenario: Discover ARM Cortex-M7 embedded capabilities
+  Given system running on STM32H7 ARM Cortex-M7 @ 480 MHz
+  When get_platform_capabilities(&caps) is called
+  Then caps.cpu_arch shall be "ARM Cortex-M7"
+  And caps.cpu_frequency_mhz shall be 480
+  And caps.hardware_timestamps shall be true (DWT cycle counter)
+  And caps.fpu_present shall be true (Cortex-M7 has FPU)
+  And caps.simd_support shall be false (no NEON on Cortex-M7)
+
+Scenario: Adapt code path based on SIMD availability
+  Given platform_caps.simd_support is true (x86 AVX)
+  When ASRC processes 192 audio samples
+  Then SIMD code path shall be selected
+  And processing time shall be <50% of scalar implementation
+  And audio output shall be bit-identical to scalar version
+```
+
+**Dependencies**:
+- **Internal**: REQ-F-ERROR-003 (capability logging at startup)
+- **External**: Platform-specific CPUID/feature detection APIs
+
+**Verification Method**: Test (capability detection on multiple platforms, optimized path selection verification, performance comparison)
+
+---
+
+#### REQ-F-HAL-007: Thread Safety and Concurrency Control Interface
+
+- **Trace to**: StR-FUNC-002, StR-PERF-004
+- **Priority**: High (P1)
+
+**Description**: The system shall provide platform-independent thread synchronization primitives (mutexes, atomic operations, thread-local storage) enabling safe concurrent access to shared state without data races or priority inversion in real-time audio threads.
+
+**Rationale**: Audio processing uses multi-threading (audio callback thread, control thread, logging thread). Shared state (synchronization status, error logs) requires thread-safe access. Embedded RTOS and desktop OS have different primitives - HAL provides uniform interface.
+
+**Functional Behavior**:
+
+1. System shall provide `threading_hal_t` interface for synchronization primitives
+2. System shall support mutual exclusion (mutex) with timeout and priority inheritance
+3. System shall support atomic operations (load, store, compare-and-swap) for lock-free algorithms
+4. System shall support thread-local storage for per-thread state (error context)
+5. System shall prohibit blocking operations in real-time audio thread (use trylock only)
+6. System shall detect priority inversion and log WARNING if audio thread blocks >1 ms
+7. System shall support spinlocks for short critical sections (<10 µs) on multi-core systems
+
+**Threading HAL Interface**:
+```c
+typedef struct {
+    void* handle;    // Opaque platform-specific handle
+} mutex_t;
+
+typedef struct {
+    void* handle;
+} thread_local_key_t;
+
+typedef struct threading_hal {
+    /* Mutex Operations */
+    int (*mutex_create)(mutex_t* mutex, bool priority_inheritance);
+    int (*mutex_destroy)(mutex_t* mutex);
+    int (*mutex_lock)(mutex_t* mutex);           // Blocking
+    int (*mutex_trylock)(mutex_t* mutex);        // Non-blocking
+    int (*mutex_unlock)(mutex_t* mutex);
+    
+    /* Atomic Operations */
+    uint32_t (*atomic_load)(volatile uint32_t* addr);
+    void (*atomic_store)(volatile uint32_t* addr, uint32_t value);
+    bool (*atomic_compare_exchange)(volatile uint32_t* addr, uint32_t expected, uint32_t desired);
+    
+    /* Thread-Local Storage */
+    int (*tls_create)(thread_local_key_t* key);
+    void* (*tls_get)(thread_local_key_t key);
+    void (*tls_set)(thread_local_key_t key, void* value);
+} threading_hal_t;
+```
+
+**Thread Safety Patterns**:
+```c
+// Pattern 1: Lock-based shared state access (control thread)
+void update_sync_status(sync_status_t* new_status) {
+    threading_hal->mutex_lock(&sync_status_mutex);
+    memcpy(&shared_sync_status, new_status, sizeof(sync_status_t));
+    threading_hal->mutex_unlock(&sync_status_mutex);
+}
+
+// Pattern 2: Lock-free atomic for real-time thread
+volatile uint32_t dars_lock_state;  // UNLOCKED=0, LOCKED=1
+
+void audio_callback(aes3_frame_t* frame) {
+    // Real-time thread - no blocking allowed
+    uint32_t lock_state = threading_hal->atomic_load(&dars_lock_state);
+    if (lock_state == LOCKED) {
+        // Process frame with locked reference
+    }
+}
+```
+
+**Boundary Values**:
+| Parameter | Minimum | Typical | Maximum | Unit | Reference |
+|-----------|---------|---------|---------|------|-----------|
+| Mutex lock time | 0 | 100 | 1000 | µs | Desktop |
+| Trylock time | 0 | 1 | 10 | µs | Real-time req |
+| Atomic op time | 10 | 50 | 100 | ns | CPU dependent |
+| Priority inversion limit | 0 | 100 | 1000 | µs | RT violation |
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Protect shared state with mutex
+  Given control thread and logging thread access shared error log
+  When control thread locks error_log_mutex
+  And attempts to append error entry
+  And logging thread attempts lock during write
+  Then logging thread shall block until control thread unlocks
+  And no data corruption shall occur
+  And both threads shall see consistent error log state
+
+Scenario: Real-time thread uses trylock (never blocks)
+  Given audio callback thread is real-time priority
+  And sync_status_mutex is currently locked by control thread
+  When audio thread calls mutex_trylock(&sync_status_mutex)
+  Then trylock shall return immediately with EBUSY
+  And audio thread shall use cached status (stale data acceptable)
+  And audio callback shall complete within deadline
+  And no blocking shall occur in real-time thread
+
+Scenario: Atomic compare-and-swap for lock-free algorithm
+  Given dars_lock_state is currently UNLOCKED (0)
+  When thread 1 calls atomic_compare_exchange(&dars_lock_state, 0, 1)
+  And thread 2 simultaneously calls atomic_compare_exchange(&dars_lock_state, 0, 1)
+  Then exactly one thread shall succeed (lock acquired)
+  And other thread shall fail and retry
+  And no data race shall occur
+  And final lock_state shall be LOCKED (1)
+```
+
+**Dependencies**:
+- **Internal**: REQ-F-ERROR-001 (priority inversion detection), REQ-F-PERF-004 (real-time constraints)
+- **External**: Platform threading primitives (pthread, Win32 threads, RTOS tasks)
+
+**Verification Method**: Test (concurrent access stress testing, priority inversion detection, deadlock detection, thread sanitizer validation)
 
 ---
 
