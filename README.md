@@ -1,15 +1,17 @@
-# Copilot Instructions Template Repository
+# AES-11-2009 Hardware-Agnostic Implementation
 
-A comprehensive template repository that integrates **IEEE/ISO/IEC software engineering standards** with **Extreme Programming (XP) techniques** and **GitHub Copilot instructions** for consistent, high-quality software development.
+A hardware-agnostic, platform-independent implementation of the **AES-11-2009 Digital Audio Reference Signal (DARS)** standard, enabling audio equipment manufacturers and developers to integrate standards-compliant digital audio synchronization with minimal complexity.
 
 ## 🎯 Purpose
 
-This repository provides:
-- **Standards-compliant** software lifecycle management (IEEE/ISO/IEC)
-- **XP practices** integration (TDD, Pair Programming, Continuous Integration)
-- **Phase-specific Copilot instructions** with `applyTo:` patterns
-- **Spec-driven development** templates using GitHub Spec-Kit
-- **Automated compliance** checking and validation
+This project delivers:
+- **100% AES-11-2009 compliant** DARS implementation
+- **Platform-independent** design (no vendor or OS-specific code)
+- **Real-time safe** for professional audio applications
+- **Certification-ready** with complete conformance test suite
+- **Hardware Abstraction Layer** enabling any platform support
+- **Standards-driven development** following IEEE/ISO/IEC lifecycle
+- **XP practices** integration (TDD, Continuous Integration)
 
 ## 📚 Standards Implemented
 
