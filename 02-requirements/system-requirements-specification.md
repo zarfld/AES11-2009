@@ -6640,6 +6640,445 @@ FetchContent_Declare(
 
 ---
 
+## 9. Glossary and References
+
+This section provides definitions of technical terms, acronyms, and comprehensive references to standards, repositories, and tools used throughout this specification per ISO/IEC/IEEE 29148:2018 Section 5.2.9.
+
+### 9.1 Technical Terms
+
+**AES3 Digital Audio Interface**: Serial transmission format for two channels of periodically sampled and linearly represented digital audio data per AES3-2009 standard, used as the transport mechanism for DARS.
+
+**ASRC (Asynchronous Sample Rate Converter)**: Digital signal processing component that converts audio between different sampling rates without requiring phase-locked synchronization between input and output clocks.
+
+**Cascaded Synchronization**: Configuration where multiple audio devices are synchronized in a chain, with each device deriving its timing from the previous device, leading to cumulative timing errors.
+
+**Capture Range**: Frequency offset range within which a DARS receiver can initially acquire lock to the reference signal (±2 ppm for Grade 1, ±50 ppm for Grade 2 per AES-11-2009 Section 5.2.4).
+
+**Channel Status Data**: 192-bit data structure transmitted alongside audio samples in AES3 frames, used to convey metadata including sampling frequency, emphasis, and DARS grade identification.
+
+**DARS (Digital Audio Reference Signal)**: Digital reference signal specified by AES-11-2009 for synchronizing digital audio equipment, consisting of an AES3-formatted signal with specific timing characteristics.
+
+**Grade 1 DARS**: High-accuracy reference signal with ±1 ppm frequency accuracy intended for systematically synchronizing multiple-studio complexes per AES-11-2009 Section 4.1.
+
+**Grade 2 DARS**: General-purpose reference signal with ±10 ppm frequency accuracy suitable for stand-alone studio applications per AES-11-2009 Section 4.2.
+
+**GPIO (General-Purpose Input/Output)**: Hardware interface pins that can be programmed for input or output of digital signals, used for external synchronization signals (video sync, GPS 1PPS).
+
+**GPSDO (GPS-Disciplined Oscillator)**: High-stability frequency reference that uses GPS satellite signals to discipline a local oscillator, providing ±1 ppb accuracy for Grade 1 DARS generation.
+
+**HAL (Hardware Abstraction Layer)**: Software layer that provides a consistent interface to hardware devices, isolating platform-specific code from the AES-11 standards implementation layer.
+
+**Holdover**: Operating mode of a synchronization system when the primary reference signal is lost, maintaining frequency stability using stored calibration data.
+
+**Jitter**: Short-term variations in the timing of digital signal edges, specified in AES-11-2009 Section 6 as <10 ns peak-to-peak for compliant DARS signals.
+
+**Phase Relationship**: Timing alignment between audio sample clock and DARS timing reference point, specified in AES-11-2009 Table 2 with tolerances of ±5% for output signals.
+
+**Preamble**: Distinctive bit pattern at the start of each AES3 subframe (X, Y, Z patterns) used for frame synchronization and channel identification, with X/Z transitions defining DARS timing reference points.
+
+**Sample Rate Accuracy**: Frequency precision of audio sampling clock relative to nominal rate, measured in parts per million (ppm), critical for maintaining lip-sync in video applications.
+
+**SFMEA (Software Failure Mode and Effects Analysis)**: Systematic method per IEEE 1633-2016 for identifying potential software failure modes and their impact on system reliability.
+
+**Synchronization Lock**: State where an audio device's sample clock is phase-locked to a reference signal with phase error within specified tolerance (±5% per AES-11-2009).
+
+**TDD (Test-Driven Development)**: XP software development practice where tests are written before implementation code, following Red-Green-Refactor cycle.
+
+**Timing Reference Point (TRP)**: Specific instant in time defined by the transition between X and Z preambles in consecutive AES3 frames, used as the synchronization reference per AES-11-2009 Section 3.3.
+
+**Video-Referenced DARS**: DARS signal whose timing is locked to video sync pulses, maintaining integer-ratio relationships specified in AES-11-2009 Table 1 for audio-video synchronization.
+
+### 9.2 Acronyms and Abbreviations
+
+| Acronym | Expansion | Context |
+|---------|-----------|---------|
+| **ADR** | Architecture Decision Record | Phase 03 design decision documentation |
+| **AES** | Audio Engineering Society | Standards organization for professional audio |
+| **ASRC** | Asynchronous Sample Rate Converter | Digital signal processing component |
+| **ATDD** | Acceptance Test-Driven Development | XP testing practice with customer-defined tests |
+| **BDD** | Behavior-Driven Development | Testing methodology using Gherkin Given-When-Then scenarios |
+| **CI/CD** | Continuous Integration/Continuous Deployment | Automated build, test, and deployment pipeline |
+| **COMP** | Component | Architecture component identifier (Phase 03) |
+| **CPU** | Central Processing Unit | Processor hardware |
+| **DARS** | Digital Audio Reference Signal | AES-11 reference signal |
+| **DES** | Design | Detailed design identifier (Phase 04) |
+| **DMA** | Direct Memory Access | Hardware data transfer mechanism |
+| **EMI** | Electromagnetic Interference | Environmental consideration for audio equipment |
+| **FPU** | Floating-Point Unit | CPU component for floating-point arithmetic |
+| **GPIO** | General-Purpose Input/Output | Hardware interface pins |
+| **GPS** | Global Positioning System | Satellite navigation system providing timing references |
+| **GPSDO** | GPS-Disciplined Oscillator | High-stability frequency reference |
+| **HAL** | Hardware Abstraction Layer | Platform-independent hardware interface |
+| **IEEE** | Institute of Electrical and Electronics Engineers | Standards organization |
+| **ISO/IEC** | International Organization for Standardization / International Electrotechnical Commission | International standards bodies |
+| **KLOC** | Thousand Lines of Code | Software size metric |
+| **MC/DC** | Modified Condition/Decision Coverage | Code coverage metric for safety-critical software |
+| **MMU** | Memory Management Unit | Hardware component for virtual memory |
+| **MTBF** | Mean Time Between Failures | Reliability metric |
+| **NTSC** | National Television System Committee | Analog TV standard (29.97/59.94 Hz frame rates) |
+| **OCA** | Open Control Architecture | AES70 device control protocol |
+| **PAL** | Phase Alternating Line | Analog TV standard (25/50 Hz frame rates) |
+| **POSIX** | Portable Operating System Interface | Unix-like OS API standard |
+| **ppm** | Parts Per Million | Frequency accuracy measurement (1 ppm = 0.0001%) |
+| **ppb** | Parts Per Billion | High-precision frequency accuracy (1 ppb = 0.000001%) |
+| **PTP** | Precision Time Protocol | IEEE 1588 network time synchronization |
+| **QA** | Quality Assurance | Quality management processes |
+| **REQ** | Requirement | System requirement identifier |
+| **RTOS** | Real-Time Operating System | Operating system for embedded/real-time applications |
+| **SFMEA** | Software Failure Mode and Effects Analysis | IEEE 1633 reliability analysis |
+| **SIMD** | Single Instruction, Multiple Data | CPU parallel processing instructions |
+| **SMPTE** | Society of Motion Picture and Television Engineers | Video/broadcast standards organization |
+| **SSD** | Solid-State Drive | High-speed storage device |
+| **STL** | Standard Template Library | C++ standard library |
+| **StR** | Stakeholder Requirement | Phase 01 requirement identifier |
+| **SyRS** | System Requirements Specification | This document per ISO/IEC/IEEE 29148:2018 |
+| **TC** | Test Case | Test identifier (Phase 07) |
+| **TDD** | Test-Driven Development | XP practice of writing tests before code |
+| **TR** | Test Result | Test execution result identifier (Phase 07) |
+| **TRP** | Timing Reference Point | DARS synchronization instant per AES-11 |
+| **UC** | Use Case | Requirements scenario identifier |
+| **UPS** | Uninterruptible Power Supply | Backup power system |
+| **UTC** | Coordinated Universal Time | International time standard |
+| **V&V** | Verification and Validation | IEEE 1012 quality assurance processes |
+| **XP** | Extreme Programming | Agile software development methodology |
+| **YAGNI** | You Aren't Gonna Need It | XP principle: implement only current requirements |
+
+### 9.3 Standards References
+
+#### 9.3.1 Primary Standards
+
+**AES-11-2009 (R2014) - Digital Audio Reference Signals**
+
+- **Organization**: Audio Engineering Society (AES)
+- **Version**: 2009, Reaffirmed 2014
+- **Title**: "AES standard for digital audio - Synchronization - Digital audio reference signal (DARS)"
+- **Scope**: Specifies digital reference signal for synchronizing professional digital audio equipment
+- **Compliance**: This specification implements 100% of AES-11-2009 requirements
+- **Key Sections Referenced**:
+  - Section 3: Definitions (TRP, DARS, synchronization lock)
+  - Section 4: DARS grades (Grade 1 ±1 ppm, Grade 2 ±10 ppm)
+  - Section 5: DARS requirements (format, frequency accuracy, capture range, phase relationships)
+  - Section 6: Jitter specifications (<10 ns peak-to-peak)
+  - Table 1: Audio-video synchronization relationships
+  - Table 2: Phase relationship tolerances (±5% output, ±25% input)
+- **Availability**: AES Store (https://www.aes.org/publications/standards/)
+- **Copyright**: © Audio Engineering Society, all rights reserved
+
+#### 9.3.2 Supporting AES Standards
+
+**AES3-2009 - Digital Audio Interface**
+
+- **Title**: "AES3-2009: AES standard for digital audio - Digital input-output interfacing - Serial transmission format for two-channel linearly represented digital audio data"
+- **Relationship**: DARS is transported via AES3 frame format
+- **Integration**: External repository `https://github.com/zarfld/AES3-2009.git` (v1.0.0+)
+- **Key Elements Used**: Frame structure, preambles (X/Y/Z), channel status data
+- **Compliance**: 100% reuse of AES3 frame parsing from external repository
+
+**AES5-2018 - Preferred Sampling Frequencies**
+
+- **Title**: "AES5-2018: AES recommended practice for professional audio - Preferred sampling frequencies for applications employing pulse-code modulation"
+- **Relationship**: Defines standard sampling rates for DARS
+- **Integration**: External repository `https://github.com/zarfld/AES5-2018.git` (v1.0.0+)
+- **Key Rates**: 32, 44.1, 48, 88.2, 96, 176.4, 192 kHz
+- **Compliance**: 100% reuse of rate constants from external repository
+
+**AES67-2018 - Audio over IP (Optional)**
+
+- **Title**: "AES67-2018: AES standard for audio applications of networks - High-performance streaming audio-over-IP interoperability"
+- **Relationship**: Future integration for network-based DARS distribution
+- **Status**: Optional enhancement for networked systems
+- **Integration**: Future Phase 08-09 enhancement
+
+**AES70-2021 - Open Control Architecture (Optional)**
+
+- **Title**: "AES70-2021: AES standard for audio applications of networks - Open Control Architecture"
+- **Relationship**: Future integration for remote device control
+- **Status**: Optional enhancement for control systems
+- **Integration**: Future Phase 08-09 enhancement
+
+#### 9.3.3 Requirements Engineering Standards
+
+**ISO/IEC/IEEE 29148:2018 - Requirements Engineering**
+
+- **Title**: "ISO/IEC/IEEE 29148:2018 Systems and software engineering - Life cycle processes - Requirements engineering"
+- **Relationship**: Defines SyRS structure and requirements quality criteria
+- **Compliance**: 100% - This document follows 29148:2018 structure
+- **Key Sections**:
+  - Section 5.2: System Requirements Specification (SyRS) content
+  - Section 5.2.5: Functional requirements specifications
+  - Section 5.2.6: Performance requirements (non-functional)
+  - Section 5.1.7: Traceability
+- **Availability**: ISO Store (https://www.iso.org/), IEEE Xplore
+
+**IEEE 1012-2016 - Verification and Validation**
+
+- **Title**: "IEEE 1012-2016: IEEE Standard for System, Software, and Hardware Verification and Validation"
+- **Relationship**: Defines V&V processes, methods, and documentation
+- **Compliance**: 100% - Section 5 implements IEEE 1012 V&V approach
+- **Key Elements**: V&V strategy, methods (Test/Inspection/Analysis/Demo), documentation requirements
+- **Availability**: IEEE Xplore (https://ieeexplore.ieee.org/)
+
+**IEEE 1633-2016 - Software Reliability Engineering**
+
+- **Title**: "IEEE 1633-2016: IEEE Recommended Practice on Software Reliability"
+- **Relationship**: Defines software reliability engineering practices including SFMEA
+- **Compliance**: 100% - SFMEA integrated in error handling requirements
+- **Key Elements**: Failure mode analysis, reliability prediction, testing strategies
+- **Availability**: IEEE Xplore
+
+**ISO/IEC 25010:2011 - Quality Models**
+
+- **Title**: "ISO/IEC 25010:2011: Systems and software engineering - Systems and software Quality Requirements and Evaluation (SQuaRE) - System and software quality models"
+- **Relationship**: Defines quality characteristics and metrics framework
+- **Compliance**: 100% - Section 7 quality metrics based on 25010
+- **Key Elements**: Quality characteristics (performance, reliability, security, maintainability, portability)
+- **Availability**: ISO Store
+
+#### 9.3.4 Architecture and Design Standards (Phase 03-04)
+
+**ISO/IEC/IEEE 42010:2011 - Architecture Description**
+
+- **Title**: "ISO/IEC/IEEE 42010:2011: Systems and software engineering - Architecture description"
+- **Relationship**: Phase 03 architecture documentation standard
+- **Usage**: ADR (Architecture Decision Record) format, viewpoints, concerns
+- **Availability**: ISO Store, IEEE Xplore
+
+**IEEE 1016-2009 - Software Design Descriptions**
+
+- **Title**: "IEEE 1016-2009: IEEE Standard for Information Technology - Systems Design - Software Design Descriptions"
+- **Relationship**: Phase 04 detailed design documentation standard
+- **Usage**: Component design specifications, interface descriptions
+- **Availability**: IEEE Xplore
+
+#### 9.3.5 Video Synchronization Standards (Optional)
+
+**SMPTE 318M-1999 - Video/Audio Synchronization**
+
+- **Title**: "SMPTE 318M-1999: Synchronization of 59.94 or 50 Hz Related Video and Audio Systems in Analog and Digital Areas"
+- **Relationship**: Defines video-referenced DARS timing relationships
+- **Usage**: Video sync pulse alignment per AES-11 Section 5.3.4, Table 1
+- **Availability**: SMPTE Store (https://www.smpte.org/)
+- **Copyright**: © Society of Motion Picture and Television Engineers
+
+**SMPTE RP168 - Vertical Interval Switching Point**
+
+- **Title**: "SMPTE RP168: Definition of Vertical Interval Switching Point for Synchronous Video Switching"
+- **Relationship**: Defines video sync pulse timing for DARS alignment
+- **Usage**: Video-referenced synchronization implementations
+- **Availability**: SMPTE Store
+
+#### 9.3.6 Optional Integration Standards
+
+**IEEE 1588-2019 - Precision Time Protocol**
+
+- **Title**: "IEEE 1588-2019: IEEE Standard for a Precision Clock Synchronization Protocol for Networked Measurement and Control Systems"
+- **Relationship**: Alternative synchronization method for network-based systems
+- **Status**: Optional integration (repository in development)
+- **Repository**: `https://github.com/zarfld/IEEE_1588_2019.git` (v0.9.0+, in development)
+- **Availability**: IEEE Xplore
+
+### 9.4 Repository References
+
+#### 9.4.1 External AES Standards Repositories
+
+**AES3-2009 Digital Audio Interface Implementation**
+
+- **Repository URL**: `https://github.com/zarfld/AES3-2009.git`
+- **Minimum Version**: v1.0.0
+- **Status**: ✅ Available
+- **Purpose**: AES3 frame format parsing, preamble detection, channel status processing
+- **Namespace**: `AES::AES3::_2009`
+- **Integration Method**: CMake FetchContent or Git submodule
+- **Key Components**:
+  - `AES::AES3::_2009::frames::AES3Frame` - Frame structure and parsing
+  - `AES::AES3::_2009::preambles::PreambleDetector` - X/Y/Z preamble detection
+  - `AES::AES3::_2009::channel::ChannelStatusProcessor` - Channel status data parsing
+- **License**: MIT or Apache 2.0 (verify in repository)
+- **Maintenance**: Active
+
+**AES5-2018 Sampling Frequencies Implementation**
+
+- **Repository URL**: `https://github.com/zarfld/AES5-2018.git`
+- **Minimum Version**: v1.0.0
+- **Status**: ✅ Available
+- **Purpose**: Standard sampling rate definitions and relationships
+- **Namespace**: `AES::AES5::_2018`
+- **Integration Method**: CMake FetchContent or Git submodule
+- **Key Components**:
+  - `AES::AES5::_2018::rates::StandardSamplingRates` - Rate constants (32/44.1/48/96/192 kHz)
+  - `AES::AES5::_2018::ratios::SampleRateRelationships` - Rate conversion ratios
+- **License**: MIT or Apache 2.0 (verify in repository)
+- **Maintenance**: Active
+
+**IEEE 1588-2019 PTPv2 Implementation (Optional)**
+
+- **Repository URL**: `https://github.com/zarfld/IEEE_1588_2019.git`
+- **Minimum Version**: v0.9.0 (pre-release)
+- **Status**: 🔄 In Development
+- **Purpose**: Precision Time Protocol for network synchronization (alternative to DARS)
+- **Namespace**: `IEEE::_1588::_2019`
+- **Integration Method**: CMake FetchContent (when stable)
+- **Key Components**:
+  - `IEEE::_1588::_2019::core::PTPv2Protocol` - PTP state machines
+  - `IEEE::_1588::_2019::clock::PTPClock` - PTP clock synchronization
+- **License**: TBD (verify in repository when released)
+- **Maintenance**: Active development
+- **Note**: Optional integration for future phases
+
+#### 9.4.2 This Project Repository
+
+**AES11-2009 Implementation Repository**
+
+- **Repository URL**: `https://github.com/zarfld/AES11-2009.git` (assumed)
+- **Project Name**: AES-11-2009 Digital Audio Reference Signal Implementation
+- **Primary Branch**: `master` or `main`
+- **Structure**:
+  - `01-stakeholder-requirements/` - Phase 01 stakeholder requirements
+  - `02-requirements/` - Phase 02 system requirements (this document)
+  - `03-architecture/` - Phase 03 architecture decisions and views
+  - `04-design/` - Phase 04 detailed component designs
+  - `05-implementation/` - Phase 05 source code (`lib/Standards/AES/AES11/2009/`)
+  - `06-integration/` - Phase 06 integration tests
+  - `07-verification-validation/` - Phase 07 V&V artifacts
+  - `08-transition/` - Phase 08 deployment documentation
+  - `09-operation-maintenance/` - Phase 09 operational guides
+  - `docs/` - Project documentation
+  - `scripts/` - Build and validation scripts
+  - `spec-kit-templates/` - Specification templates and schemas
+  - `standards-compliance/` - Compliance checklists and reviews
+- **License**: TBD (MIT or Apache 2.0 recommended for open source)
+- **Maintenance**: Active development (Phase 02 in progress)
+
+### 9.5 Tools and Software References
+
+#### 9.5.1 Build and Development Tools
+
+**CMake - Cross-Platform Build System**
+
+- **Tool**: CMake
+- **Minimum Version**: 3.20+
+- **URL**: https://cmake.org/
+- **Purpose**: Build system generator, dependency management
+- **License**: BSD 3-Clause
+
+**Compilers**
+
+- **GCC (GNU Compiler Collection)**: v9.0+, https://gcc.gnu.org/, GPL + Runtime Exception
+- **Clang/LLVM**: v10.0+, https://clang.llvm.org/, Apache 2.0 with LLVM Exception
+- **MSVC (Microsoft Visual C++)**: v19.20+ (Visual Studio 2019), Windows only
+
+**Package Managers**
+
+- **Conan**: C++ package manager, https://conan.io/, MIT License
+- **vcpkg**: Microsoft C++ package manager, https://vcpkg.io/, MIT License
+
+#### 9.5.2 Testing Frameworks
+
+**Unit Testing**
+
+- **GoogleTest**: v1.10+, https://github.com/google/googletest, BSD 3-Clause
+- **Unity**: Embedded C testing, https://github.com/ThrowTheSwitch/Unity, MIT License
+- **pytest**: Python testing, v6.0+, https://pytest.org/, MIT License
+
+**Behavior-Driven Development (BDD)**
+
+- **Cucumber**: Gherkin BDD framework, https://cucumber.io/, MIT License
+- **Robot Framework**: Acceptance testing, https://robotframework.org/, Apache 2.0
+
+#### 9.5.3 Static Analysis and Quality Tools
+
+**Static Analyzers**
+
+- **clang-tidy**: C++ linter, https://clang.llvm.org/extra/clang-tidy/, LLVM License
+- **cppcheck**: Static analysis, https://cppcheck.sourceforge.io/, GPL v3
+- **Coverity**: Commercial static analyzer, https://scan.coverity.com/, Proprietary
+
+**Code Coverage**
+
+- **gcov/lcov**: GCC coverage tools, https://gcc.gnu.org/onlinedocs/gcc/Gcov.html, GPL
+- **Codecov**: Coverage reporting, https://codecov.io/, SaaS platform
+
+**Dynamic Analysis**
+
+- **Valgrind**: Memory debugging, https://valgrind.org/, GPL v2
+- **AddressSanitizer/ThreadSanitizer**: Clang/GCC sanitizers, LLVM/GCC licenses
+
+#### 9.5.4 Documentation Tools
+
+**API Documentation**
+
+- **Doxygen**: v1.9+, https://www.doxygen.nl/, GPL v2
+- **Purpose**: Generate API documentation from source code comments
+
+**Specification Tools**
+
+- **Markdown**: Lightweight markup language for all specification documents
+- **Mermaid**: Diagram generation, https://mermaid-js.github.io/, MIT License
+
+#### 9.5.5 Version Control and CI/CD
+
+**Version Control**
+
+- **Git**: v2.30+, https://git-scm.com/, GPL v2
+- **GitHub**: Repository hosting, https://github.com/, Proprietary SaaS
+
+**Continuous Integration**
+
+- **GitHub Actions**: Integrated CI/CD, https://github.com/features/actions
+- **Jenkins**: Open-source automation server, https://www.jenkins.io/, MIT License
+
+#### 9.5.6 Test Equipment (Hardware)
+
+**Frequency and Timing Measurement**
+
+- **Frequency Counters**: ±0.1 ppm accuracy, for DARS frequency validation
+- **Jitter Analyzers**: <1 ps resolution, for AES-11 Section 6 jitter compliance
+- **Oscilloscopes**: ≥1 GHz bandwidth, for signal integrity analysis
+- **Logic Analyzers**: Multi-channel digital capture, for protocol analysis
+
+**Audio Quality Measurement**
+
+- **Audio Precision Analyzers**: Professional audio analyzers, THD+N, frequency response
+- **Digital Audio Test Sets**: AES3 signal generation and analysis
+- **Phase Meters**: Phase relationship measurement per AES-11 Table 2
+
+**Synchronization Equipment**
+
+- **GPS Receivers**: 1PPS output, <100 ns accuracy, for GPSDO-based systems
+- **Video Sync Generators**: SMPTE-compliant sync signals for video-referenced DARS
+- **Rubidium/Cesium Frequency Standards**: ±1 ppb accuracy references
+
+### 9.6 External Resources and Information Sources
+
+**Standards Organizations**
+
+- **AES (Audio Engineering Society)**: https://www.aes.org/
+  - Standards Store: https://www.aes.org/publications/standards/
+  - Technical Committees: https://www.aes.org/technical/
+- **IEEE (Institute of Electrical and Electronics Engineers)**: https://www.ieee.org/
+  - IEEE Xplore Digital Library: https://ieeexplore.ieee.org/
+- **ISO/IEC**: https://www.iso.org/, https://www.iec.ch/
+- **SMPTE**: https://www.smpte.org/
+
+**Technical Documentation**
+
+- **AES-11 Implementation Notes**: Contact AES Technical Committee on Digital Audio
+- **Professional Audio Forums**: Various online communities for implementation questions
+
+**Educational Resources**
+
+- **Digital Audio Fundamentals**: Books and online courses on digital audio engineering
+- **Synchronization Theory**: Academic papers on clock synchronization and jitter
+- **XP/Agile Practices**: Resources on Test-Driven Development and Extreme Programming
+
+**Community Support**
+
+- **GitHub Discussions**: Project-specific Q&A and discussions
+- **Stack Overflow**: Technical programming questions (tags: audio, aes3, synchronization)
+- **Audio Engineering Communities**: Professional audio engineering forums
+
+---
+
 ## Status: Phase 02 In Progress
 
 ✅ **Completed**:
