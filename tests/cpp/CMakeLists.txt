@@ -1,0 +1,13 @@
+add_executable(aes11_tests
+  test_timesrc_snapshot.cpp
+  test_sync_selection.cpp
+)
+
+target_link_libraries(aes11_tests
+  PRIVATE
+    aes11_standards
+    GTest::gtest_main
+)
+
+include(GoogleTest)
+gtest_discover_tests(aes11_tests)
