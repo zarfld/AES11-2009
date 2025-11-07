@@ -93,7 +93,14 @@ jobs:
           if [ -n "$FILES" ]; then
             clang-format -version
             # Enforce repository style; ensure .clang-format is honored
-            clang-format -n --Werror -style=file $FILES
+            if ! clang-format -n --Werror -style=file $FILES; then
+              echo "⚠️ Formatting differences detected. Showing unified diffs (proposed by clang-format):"
+              for f in $FILES; do
+                # Print diff between current file and clang-format output
+                clang-format -style=file "$f" | diff -u "$f" - || true
+              done
+              exit 1
+            fi
           else
             echo "No C/C++ files to format-check"
           fi
