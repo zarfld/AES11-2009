@@ -1,0 +1,5 @@
+Checks: '-*,clang-analyzer-*,bugprone-*'
+WarningsAsErrors: 'clang-analyzer-*,bugprone-*'
+HeaderFilterRegex: '^(lib/|tests/).*$'
+AnalyzeTemporaryDtors: false
+FormatStyle: none

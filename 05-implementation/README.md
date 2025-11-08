@@ -23,6 +23,9 @@ All code in this phase remains vendor/OS-agnostic and testable without hardware.
 ## CI and Quality Gates
 
 - GitHub Actions workflow (`.github/workflows/ci.yml`) builds on Linux and Windows, runs all tests, and enforces line coverage ≥ 80% on Linux via gcovr.
+- Static analysis:
+  - `clang-tidy` (minimal checks: `clang-analyzer-*`, `bugprone-*`) runs in CI using the repository `.clang-tidy` config and CMake `compile_commands.json`. Violations fail the build.
+  - `cppcheck` runs in the standards compliance workflow with `--enable=warning,style,performance,portability`; violations fail the build (inline suppressions allowed).
 - Reliability metrics instrumentation: utcFailures, dateTimeFailures, leapSecondFailures, timezoneFailures counters (see `lib/Standards/Common/reliability/metrics.*`). Use `ReliabilityMetrics::resetForTesting()` for deterministic test isolation. Additional structured event sink planned (Phase 05 incremental).
 - Structured reliability event sink: register a process-wide sink via `Common::reliability::set_event_sink()` (see `lib/Standards/Common/reliability/events.*`). Metrics increments emit events (e.g., `utc_failure`, `timezone_failure`, `leap_second_failure`) as lightweight, hardware-agnostic structured signals. If no sink is set, emission is a no-op.
 - Local coverage run (Linux/WSL/macOS with GCC/Clang):
@@ -30,6 +33,16 @@ All code in this phase remains vendor/OS-agnostic and testable without hardware.
   - Build and test: `cmake --build build --config Debug && ctest --test-dir build -C Debug`
   - Generate report (example): `gcovr -r . --exclude 'tests/.*' --xml build/coverage.xml --html-details build/coverage.html`
   - Threshold check: ensure reported line coverage ≥ 80%.
+
+### Suppressing specific findings (with justification)
+
+- Clang-Tidy:
+  - Suppress next line only: `// NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)  // reason`
+  - Suppress at symbol: `// NOLINT(bugprone-branch-clone)  // reason`
+- Cppcheck:
+  - Inline suppression: `// cppcheck-suppress nullPointer  // reason`
+
+Please prefer refactoring to suppressions. When suppression is necessary, document the rationale clearly and link to the relevant design/requirement ID.
 
 ## Directory layout
 

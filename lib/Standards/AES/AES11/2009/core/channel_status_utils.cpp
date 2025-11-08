@@ -11,6 +11,7 @@ Notes: Implements flag, grade, UTC/timezone, and date/time mapping logic with va
 #include "channel_status_utils.hpp"
 #include "channel_status_constants.hpp"
 #include "Common/reliability/metrics.hpp"
+#include "Common/testing/fault_injection.hpp"
 
 #include <cstring>
 
@@ -207,6 +208,13 @@ bool ChannelStatusUtils::set_datetime_info(uint8_t* channelStatus, size_t length
         Common::reliability::ReliabilityMetrics::incrementDateTimeFailure();
         return false;
     }
+    // Fault injection: force failure path before validation (simulates internal validation rejection)
+#ifdef AES11_FAULT_INJECTION
+    if (Common::testing::FaultInjection::is_enabled("ChannelStatusUtils.set_datetime_info.fail")) {
+        Common::reliability::ReliabilityMetrics::incrementDateTimeFailure();
+        return false;
+    }
+#endif
     if (!dt_fields_in_range(dt)) {
         Common::reliability::ReliabilityMetrics::incrementDateTimeFailure();
         if (dt.leapSecond && dt.second != 59) {
@@ -231,6 +239,13 @@ std::optional<DateTimeFields> ChannelStatusUtils::extract_datetime_info(const ui
     if (!channelStatus) return std::nullopt;
     // Enforce full channel status block size for Annex A operations
     if (length < kChannelStatusMinBytes) return std::nullopt;
+    // Fault injection: simulate parse failure prior to reading
+#ifdef AES11_FAULT_INJECTION
+    if (Common::testing::FaultInjection::is_enabled("ChannelStatusUtils.extract_datetime_info.fail")) {
+        Common::reliability::ReliabilityMetrics::incrementDateTimeFailure();
+        return std::nullopt;
+    }
+#endif
     DateTimeFields dt{};
     dt.year   = channelStatus[CS_DT_START_INDEX + 0];
     dt.month  = channelStatus[CS_DT_START_INDEX + 1];

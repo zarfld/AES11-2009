@@ -93,7 +93,7 @@ jobs:
       - name: Install C/C++ quality tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format cppcheck python3-pip
+          sudo apt-get install -y clang-format cppcheck clang-tidy python3-pip
           pip3 install --user lizard mdformat
 
       - name: Check C/C++ formatting (clang-format)
@@ -155,6 +155,17 @@ jobs:
             --suppress=missingIncludeSystem \
             lib tests || {
               echo "❌ cppcheck found issues"; exit 1; }
+
+      - name: Static analysis (clang-tidy)
+        run: |
+          echo "🔍 Running clang-tidy static analysis..."
+          cmake -S . -B build -DBUILD_TESTS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          FILES=$(git ls-files "lib/**/*.c" "lib/**/*.cc" "lib/**/*.cpp" "lib/**/*.cxx" "lib/**/*.h" "lib/**/*.hh" "lib/**/*.hpp" "lib/**/*.hxx")
+          if [ -n "$FILES" ]; then
+            clang-tidy -p build --quiet $FILES || { echo "❌ clang-tidy detected issues"; exit 1; }
+          else
+            echo "No C/C++ files for clang-tidy"
+          fi
 
       - name: Complexity analysis (lizard)
         run: |

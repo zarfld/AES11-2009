@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(BUILD_TESTS "Build C++ tests" ON)
 option(ENABLE_COVERAGE "Enable code coverage instrumentation (GCC/Clang only)" OFF)
+option(ENABLE_FAULT_INJECTION "Enable AES11 fault injection hooks for testing" OFF)
 
 # Optional coverage flags for GCC/Clang; no effect on MSVC/Windows
 if(ENABLE_COVERAGE)
@@ -18,6 +19,15 @@ if(ENABLE_COVERAGE)
   else()
     message(WARNING "ENABLE_COVERAGE requested but not supported for compiler: ${CMAKE_CXX_COMPILER_ID}")
   endif()
+endif()
+
+# Fault injection compile definition (disabled by default). When enabled, code paths
+# guarded by #ifdef AES11_FAULT_INJECTION will simulate controlled failures for tests.
+if(ENABLE_FAULT_INJECTION)
+  message(STATUS "Fault injection ENABLED (AES11_FAULT_INJECTION=1)")
+  add_compile_definitions(AES11_FAULT_INJECTION=1)
+else()
+  message(STATUS "Fault injection disabled (ENABLE_FAULT_INJECTION=OFF)")
 endif()
 
 add_library(aes11_standards STATIC
@@ -39,6 +49,12 @@ add_library(aes11_standards STATIC
 target_include_directories(aes11_standards PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/Standards
 )
+
+# When building tests, compile the standards library with fault injection enabled
+# so tests can toggle fault points at runtime without affecting release builds.
+if(BUILD_TESTS)
+  target_compile_definitions(aes11_standards PUBLIC AES11_FAULT_INJECTION=1)
+endif()
 
 # Optional AES5 integration via git submodule similar to AES3
 option(AES5_INTEGRATION "Enable integration with AES5 repository (prefers git submodule)" ON)

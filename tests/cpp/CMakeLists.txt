@@ -17,6 +17,7 @@ add_executable(aes11_tests
   test_channel_status_constants.cpp
   test_reliability_metrics.cpp
   test_reliability_events.cpp
+  test_fault_injection.cpp
 )
 
 target_link_libraries(aes11_tests
@@ -24,6 +25,9 @@ target_link_libraries(aes11_tests
     aes11_standards
     GTest::gtest_main
 )
+
+# Enable fault injection in tests by default
+target_compile_definitions(aes11_tests PRIVATE AES11_FAULT_INJECTION=1)
 
 include(GoogleTest)
 gtest_discover_tests(aes11_tests)

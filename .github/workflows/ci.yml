@@ -20,15 +20,26 @@ jobs:
 
             - name: Phase 05 Test Headers & Naming Enforcement
               run: |
-                echo "🔎 Enforcing Phase 05 test header and naming conventions..."
-                python3 scripts/ci/check-test-headers-and-naming.py
+                  echo "🔎 Enforcing Phase 05 test header and naming conventions..."
+                  python3 scripts/ci/check-test-headers-and-naming.py
 
             - name: Install build deps
-              run: sudo apt-get update && sudo apt-get install -y lcov gcovr
+              run: sudo apt-get update && sudo apt-get install -y lcov gcovr clang-tidy
 
             - name: Configure (Coverage Enabled)
               run: |
-                  cmake -S . -B build -DENABLE_COVERAGE=ON -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
+                cmake -S . -B build -DENABLE_COVERAGE=ON -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+            - name: Static analysis (clang-tidy minimal)
+              run: |
+                echo "🔍 Running clang-tidy (minimal: clang-analyzer, bugprone)..."
+                FILES=$(git ls-files "lib/**/*.c" "lib/**/*.cc" "lib/**/*.cpp" "lib/**/*.cxx" "lib/**/*.h" "lib/**/*.hh" "lib/**/*.hpp" "lib/**/*.hxx" "tests/**/*.cpp" "tests/**/*.c");
+                if [ -n "$FILES" ]; then
+                  clang-tidy --version
+                  clang-tidy -p build --quiet $FILES || { echo "❌ clang-tidy reported issues"; exit 1; }
+                else
+                  echo "No C/C++ files to analyze"
+                fi
 
             - name: Build
               run: cmake --build build --config Debug -- -j 2
