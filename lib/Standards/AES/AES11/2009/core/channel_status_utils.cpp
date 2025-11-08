@@ -10,6 +10,7 @@ Notes: Implements flag, grade, UTC/timezone, and date/time mapping logic with va
 */
 #include "channel_status_utils.hpp"
 #include "channel_status_constants.hpp"
+#include "Common/reliability/metrics.hpp"
 
 #include <cstring>
 
@@ -166,8 +167,14 @@ std::optional<UTCInfo> ChannelStatusUtils::extract_utc_info(const uint8_t* chann
 bool ChannelStatusUtils::set_utc_info(uint8_t* channelStatus, size_t length, const UTCInfo& info) {
     if (!channelStatus) return false;
     // Enforce full channel status block size for Annex A operations
-    if (length < kChannelStatusMinBytes) return false;
-    if (!tz_offset_in_range(info.timezoneOffsetMinutes)) return false;
+    if (length < kChannelStatusMinBytes) {
+        Common::reliability::ReliabilityMetrics::incrementUtcFailure();
+        return false;
+    }
+    if (!tz_offset_in_range(info.timezoneOffsetMinutes)) {
+        Common::reliability::ReliabilityMetrics::incrementUtcFailure();
+        return false;
+    }
     // Write flags
     if (!write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_UTC_VALID_MASK, info.utcValid)) return false;
     if (!write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_LEAP_PENDING_MASK, info.leapSecondPending)) return false;
@@ -194,8 +201,14 @@ static inline bool dt_fields_in_range(const DateTimeFields& dt) {
 bool ChannelStatusUtils::set_datetime_info(uint8_t* channelStatus, size_t length, const DateTimeFields& dt) {
     if (!channelStatus) return false;
     // Enforce full channel status block size for Annex A operations
-    if (length < kChannelStatusMinBytes) return false; // require 24-byte block
-    if (!dt_fields_in_range(dt)) return false;
+    if (length < kChannelStatusMinBytes) { // require 24-byte block
+        Common::reliability::ReliabilityMetrics::incrementDateTimeFailure();
+        return false;
+    }
+    if (!dt_fields_in_range(dt)) {
+        Common::reliability::ReliabilityMetrics::incrementDateTimeFailure();
+        return false;
+    }
     // Write UTC flag and leap-second into UTC flags byte, reuse existing helpers
     if (!write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_UTC_VALID_MASK, dt.utc)) return false;
     if (!write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_LEAP_PENDING_MASK, dt.leapSecond)) return false;
