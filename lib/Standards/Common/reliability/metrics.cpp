@@ -8,6 +8,7 @@ Traceability:
 Notes: Implements simple atomic counters for reliability evidence; hardware/OS agnostic.
 */
 #include "metrics.hpp"
+#include "events.hpp"
 #include <atomic>
 
 namespace Common {
@@ -20,18 +21,22 @@ static std::atomic<uint64_t> g_timezoneFailures{0};
 
 void ReliabilityMetrics::incrementUtcFailure() {
     g_utcFailures.fetch_add(1, std::memory_order_relaxed);
+    emit_event({"utc_failure", 1, nullptr});
 }
 
 void ReliabilityMetrics::incrementDateTimeFailure() {
     g_dateTimeFailures.fetch_add(1, std::memory_order_relaxed);
+    emit_event({"datetime_failure", 1, nullptr});
 }
 
 void ReliabilityMetrics::incrementLeapSecondFailure() {
     g_leapSecondFailures.fetch_add(1, std::memory_order_relaxed);
+    emit_event({"leap_second_failure", 1, nullptr});
 }
 
 void ReliabilityMetrics::incrementTimezoneFailure() {
     g_timezoneFailures.fetch_add(1, std::memory_order_relaxed);
+    emit_event({"timezone_failure", 1, nullptr});
 }
 
 MetricsSnapshot ReliabilityMetrics::snapshot() {

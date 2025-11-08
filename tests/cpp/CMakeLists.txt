@@ -16,6 +16,7 @@ add_executable(aes11_tests
   test_aes5_adapter.cpp
   test_channel_status_constants.cpp
   test_reliability_metrics.cpp
+  test_reliability_events.cpp
 )
 
 target_link_libraries(aes11_tests

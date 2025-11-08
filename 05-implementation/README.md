@@ -23,6 +23,7 @@ All code in this phase remains vendor/OS-agnostic and testable without hardware.
 ## CI and Quality Gates
 
 - GitHub Actions workflow (`.github/workflows/ci.yml`) builds on Linux and Windows, runs all tests, and enforces line coverage ≥ 80% on Linux via gcovr.
+- Reliability metrics instrumentation: utcFailures, dateTimeFailures, leapSecondFailures, timezoneFailures counters (see `lib/Standards/Common/reliability/metrics.*`). Use `ReliabilityMetrics::resetForTesting()` for deterministic test isolation. Additional structured event sink planned (Phase 05 incremental).
 - Local coverage run (Linux/WSL/macOS with GCC/Clang):
   - Configure with coverage flags: `cmake -S . -B build -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug`
   - Build and test: `cmake --build build --config Debug && ctest --test-dir build -C Debug`
@@ -84,6 +85,7 @@ Milestone 5: Synchronization manager (skeleton)
 - External AES3/AES5 repos may be added later via FetchContent; not required to start
 - All comments must avoid reproducing copyrighted standard text; reference section numbers only
 - Reliability hooks: expose error paths via return codes; tests assert failure cases (e.g., buffer length guard, leap-second rule). Structured logging can be added in service layer; standards layer remains pure and hardware-agnostic.
+- Extended reliability counters added for leap-second rule violations and timezone range failures to support IEEE 1633 evidence collection. Future enhancement: lightweight event sink for external aggregation.
 
 ## Traceability
 
