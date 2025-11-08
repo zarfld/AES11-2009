@@ -10,6 +10,7 @@ add_executable(aes11_tests
   test_channel_status_bitfields.cpp
   test_aes3_adapter.cpp
   test_channel_status_annex_a.cpp
+  test_datetime_channel_status.cpp
   test_trp_detection_scan.cpp
 )
 
