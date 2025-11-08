@@ -38,3 +38,32 @@ TEST(SampleRateValidationTests, PpmToleranceValidation) {
     EXPECT_FALSE(SampleRateValidator::within_tolerance(nominal, plus12ppm, 10.0));
     EXPECT_FALSE(SampleRateValidator::within_tolerance(nominal, 48000.0, -1.0));
 }
+
+// Enhanced REQ-F-DARS-008: Category mapping when AES5 is active
+// PASS if standard rate and |ppm| <= 1, WARNING if standard rate and |ppm| <= 10, else FAIL
+TEST(SampleRateValidationTests, ClassificationPassWithinOnePpm) {
+    const uint32_t nominal = 48000;
+    const double plus0_5ppm = 48000.0 * (1.0 + 0.5 / 1'000'000.0);
+    auto cat = SampleRateValidator::classify(nominal, plus0_5ppm);
+    EXPECT_EQ(cat, SampleRateValidator::ValidationCategory::Pass);
+}
+
+TEST(SampleRateValidationTests, ClassificationWarningWithinTenPpm) {
+    const uint32_t nominal = 48000;
+    const double plus8ppm = 48000.0 * (1.0 + 8.0 / 1'000'000.0);
+    auto cat = SampleRateValidator::classify(nominal, plus8ppm);
+    EXPECT_EQ(cat, SampleRateValidator::ValidationCategory::Warning);
+}
+
+TEST(SampleRateValidationTests, ClassificationFailBeyondTenPpm) {
+    const uint32_t nominal = 48000;
+    const double plus12ppm = 48000.0 * (1.0 + 12.0 / 1'000'000.0);
+    auto cat = SampleRateValidator::classify(nominal, plus12ppm);
+    EXPECT_EQ(cat, SampleRateValidator::ValidationCategory::Fail);
+}
+
+TEST(SampleRateValidationTests, ClassificationNonStandardRateFails) {
+    const uint32_t nominal = 12345; // not an AES5 standard rate in our adapter
+    auto cat = SampleRateValidator::classify(nominal, static_cast<double>(nominal));
+    EXPECT_EQ(cat, SampleRateValidator::ValidationCategory::Fail);
+}

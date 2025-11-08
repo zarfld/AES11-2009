@@ -48,6 +48,23 @@ bool SampleRateValidator::within_tolerance(uint32_t nominalHz, double measuredHz
     return r.ppmError <= ppmTolerance + 1e-12;
 }
 
+SampleRateValidator::ValidationCategory SampleRateValidator::classify(uint32_t nominalHz, double measuredHz) {
+    // PASS if AES5 standard base/multiple and within ±1 ppm
+    // WARNING if AES5 standard and within ±10 ppm (but > 1 ppm)
+    // FAIL otherwise (non-standard or >10 ppm)
+    ValidationResult r = evaluate(nominalHz, measuredHz);
+    if (!r.isStandard) {
+        return ValidationCategory::Fail;
+    }
+    if (r.ppmError <= 1.0 + 1e-12) {
+        return ValidationCategory::Pass;
+    }
+    if (r.ppmError <= 10.0 + 1e-12) {
+        return ValidationCategory::Warning;
+    }
+    return ValidationCategory::Fail;
+}
+
 // NOTE: AES5 integration temporarily disabled in this compilation unit due to
 // namespace collision and relative include issues. Adapter functions below
 // provide stub behavior until a clean, out-of-namespace include strategy is

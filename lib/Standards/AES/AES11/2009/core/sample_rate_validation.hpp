@@ -22,6 +22,13 @@ public:
         double ppmError {0.0};
     };
 
+    // Classification categories for REQ-F-DARS-008 enhanced validation
+    enum class ValidationCategory {
+        Pass,      // Standard rate and |ppm| <= 1
+        Warning,   // Standard rate and |ppm| <= 10 (but > 1)
+        Fail       // Non-standard rate or |ppm| > 10
+    };
+
     // Returns true if the provided rate is an AES5-2018 standard base or multiple (via AES5 repo when available)
     static bool is_aes5_standard(uint32_t rateHz);
 
@@ -30,6 +37,9 @@ public:
 
     // Returns true if measuredHz is within ±ppmTolerance parts-per-million of nominalHz.
     static bool within_tolerance(uint32_t nominalHz, double measuredHz, double ppmTolerance);
+
+    // Determines PASS/WARNING/FAIL classification based on ppm thresholds
+    static ValidationCategory classify(uint32_t nominalHz, double measuredHz);
 };
 
 // Thin wrapper adapter around AES5 PrimaryFrequencyValidator (if integrated) to avoid
