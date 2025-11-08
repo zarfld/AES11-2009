@@ -107,6 +107,13 @@ public:
     // is cross-verified.
     static std::optional<bool> read_dst_flag(const uint8_t* channelStatus, size_t length);
     static bool set_dst_flag(uint8_t* channelStatus, size_t length, bool enabled);
+
+    // --- Non-Audio / Content-Type Flag (implementation-defined) ---
+    // We allocate bit3 (0x08) of the UTC flags byte (index 17) to represent a non-audio/content-type
+    // indicator (true = non-audio/reference frame). This mapping is internal only and may be
+    // adjusted when cross-referenced with authoritative layout; tests enforce preservation of other bits.
+    static std::optional<bool> read_non_audio(const uint8_t* channelStatus, size_t length);
+    static bool set_non_audio(uint8_t* channelStatus, size_t length, bool enabled);
 };
 
 } // namespace core

@@ -114,3 +114,24 @@ TEST(ChannelStatusAnnexATests, PreservesReservedBytesOutsideMappedFields) {
         }
     }
 }
+
+// New: Non-audio/content-type flag roundtrip, implemented as an internal mapping
+TEST(ChannelStatusAnnexATests, NonAudioFlagRoundTrip) {
+    uint8_t cs[24]{};
+    // Default should be false
+    auto n0 = ChannelStatusUtils::read_non_audio(cs, sizeof(cs));
+    ASSERT_TRUE(n0.has_value());
+    EXPECT_FALSE(*n0);
+
+    // Set to true and read back
+    ASSERT_TRUE(ChannelStatusUtils::set_non_audio(cs, sizeof(cs), true));
+    auto n1 = ChannelStatusUtils::read_non_audio(cs, sizeof(cs));
+    ASSERT_TRUE(n1.has_value());
+    EXPECT_TRUE(*n1);
+
+    // Clear to false again
+    ASSERT_TRUE(ChannelStatusUtils::set_non_audio(cs, sizeof(cs), false));
+    auto n2 = ChannelStatusUtils::read_non_audio(cs, sizeof(cs));
+    ASSERT_TRUE(n2.has_value());
+    EXPECT_FALSE(*n2);
+}
