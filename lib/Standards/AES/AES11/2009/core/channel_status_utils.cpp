@@ -106,6 +106,53 @@ bool ChannelStatusUtils::write_flag(uint8_t* buffer, size_t length, size_t byteI
     return true;
 }
 
+// --- Annex A UTC / Timezone mapping ---
+// Assumed byte positions within channel status block (see header notes):
+static constexpr size_t CS_UTC_FLAGS_INDEX = 17; // byte 18 (zero-based index 17)
+static constexpr uint8_t CS_UTC_VALID_MASK = 0x01; // bit 0
+static constexpr uint8_t CS_LEAP_PENDING_MASK = 0x02; // bit 1
+static constexpr size_t CS_TZ_OFFSET_LO_INDEX = 18; // byte 19 low
+static constexpr size_t CS_TZ_OFFSET_HI_INDEX = 19; // byte 20 high
+
+static inline bool tz_offset_in_range(int32_t minutes) {
+    // Common practical bounds: UTC-12:00 (-720) .. UTC+14:00 (+840)
+    return minutes >= -720 && minutes <= 840;
+}
+
+std::optional<UTCInfo> ChannelStatusUtils::extract_utc_info(const uint8_t* channelStatus, size_t length) {
+    if (!channelStatus) return std::nullopt;
+    if (length <= CS_TZ_OFFSET_HI_INDEX) return std::nullopt;
+    UTCInfo info{};
+    auto utcValidOpt = read_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_UTC_VALID_MASK);
+    auto leapOpt = read_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_LEAP_PENDING_MASK);
+    if (!utcValidOpt.has_value() || !leapOpt.has_value()) return std::nullopt;
+    info.utcValid = *utcValidOpt;
+    info.leapSecondPending = *leapOpt;
+    // Little-endian signed 16-bit minutes offset
+    uint16_t lo = channelStatus[CS_TZ_OFFSET_LO_INDEX];
+    uint16_t hi = channelStatus[CS_TZ_OFFSET_HI_INDEX];
+    int16_t signedVal = static_cast<int16_t>((hi << 8) | lo);
+    info.timezoneOffsetMinutes = signedVal;
+    if (!tz_offset_in_range(info.timezoneOffsetMinutes)) {
+        return std::nullopt;
+    }
+    return info;
+}
+
+bool ChannelStatusUtils::set_utc_info(uint8_t* channelStatus, size_t length, const UTCInfo& info) {
+    if (!channelStatus) return false;
+    if (length <= CS_TZ_OFFSET_HI_INDEX) return false;
+    if (!tz_offset_in_range(info.timezoneOffsetMinutes)) return false;
+    // Write flags
+    if (!write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_UTC_VALID_MASK, info.utcValid)) return false;
+    if (!write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_LEAP_PENDING_MASK, info.leapSecondPending)) return false;
+    // Write little-endian signed 16-bit minutes offset
+    uint16_t raw = static_cast<uint16_t>(static_cast<uint16_t>(info.timezoneOffsetMinutes) & 0xFFFFu);
+    channelStatus[CS_TZ_OFFSET_LO_INDEX] = static_cast<uint8_t>(raw & 0xFFu);
+    channelStatus[CS_TZ_OFFSET_HI_INDEX] = static_cast<uint8_t>((raw >> 8) & 0xFFu);
+    return true;
+}
+
 } // namespace core
 } // namespace _2009
 } // namespace AES11
