@@ -16,11 +16,19 @@ add_library(aes11_standards STATIC
   lib/Standards/AES/AES11/2009/core/capture_range.cpp
   lib/Standards/AES/AES11/2009/core/phase_tolerance.cpp
   lib/Standards/AES/AES11/2009/sync/gps_reference_sync.cpp
+  lib/Standards/AES/AES11/2009/core/channel_status_utils.cpp
+  lib/Standards/AES/AES11/2009/core/aes3_adapter.cpp
 )
 
 target_include_directories(aes11_standards PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/Standards
 )
+
+# Optional AES3 integration toggle (external repo). Default OFF in this repo.
+option(AES3_INTEGRATION "Enable integration with external AES3 repository" OFF)
+if(AES3_INTEGRATION)
+  target_compile_definitions(aes11_standards PUBLIC AES3_INTEGRATION=1)
+endif()
 
 if(BUILD_TESTS)
   include(FetchContent)

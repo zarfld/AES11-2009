@@ -6,6 +6,9 @@ add_executable(aes11_tests
   test_capture_range.cpp
   test_phase_tolerance.cpp
   test_gps_reference_sync.cpp
+  test_channel_status_utils.cpp
+  test_channel_status_bitfields.cpp
+  test_aes3_adapter.cpp
 )
 
 target_link_libraries(aes11_tests

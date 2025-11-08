@@ -1,0 +1,112 @@
+#include "channel_status_utils.hpp"
+
+#include <cstring>
+
+namespace AES {
+namespace AES11 {
+namespace _2009 {
+namespace core {
+
+static constexpr size_t CS_BYTE4_INDEX = 3; // zero-based: byte 4 is index 3
+
+DARSGrade ChannelStatusUtils::extract_grade(const uint8_t* channelStatus, size_t length) {
+    if (!channelStatus || length <= CS_BYTE4_INDEX) return DARSGrade::Unknown;
+    uint8_t b4 = channelStatus[CS_BYTE4_INDEX];
+    uint8_t bits = static_cast<uint8_t>(b4 & 0x03u);
+    switch (bits) {
+        case 0x01: return DARSGrade::Grade1;
+        case 0x02: return DARSGrade::Grade2;
+        case 0x03: return DARSGrade::Reserved;
+        default:   return DARSGrade::Unknown;
+    }
+}
+
+bool ChannelStatusUtils::set_grade(uint8_t* channelStatus, size_t length, DARSGrade grade) {
+    if (!channelStatus || length <= CS_BYTE4_INDEX) return false;
+    uint8_t b4 = channelStatus[CS_BYTE4_INDEX];
+    b4 &= static_cast<uint8_t>(~0x03u); // clear bits 0-1
+    uint8_t val = 0x00;
+    switch (grade) {
+        case DARSGrade::Grade1: val = 0x01; break;
+        case DARSGrade::Grade2: val = 0x02; break;
+        case DARSGrade::Reserved: val = 0x03; break;
+        case DARSGrade::Unknown: default: val = 0x00; break;
+    }
+    channelStatus[CS_BYTE4_INDEX] = static_cast<uint8_t>(b4 | val);
+    return true;
+}
+
+static inline bool in_range(uint8_t v, uint8_t lo, uint8_t hi) { return v >= lo && v <= hi; }
+
+bool ChannelStatusUtils::encode_datetime(const DateTimeFields& dt, uint8_t* out6) {
+    if (!out6) return false;
+    if (!in_range(dt.year, 0, 99) || !in_range(dt.month, 1, 12) || !in_range(dt.day, 1, 31) ||
+        !in_range(dt.hour, 0, 23) || !in_range(dt.minute, 0, 59) || !in_range(dt.second, 0, 59)) {
+        return false;
+    }
+    // Minimal compact layout (implementation-defined scaffolding):
+    // [0]=year, [1]=month, [2]=day, [3]=hour, [4]=minute, [5]=second with flags in MSBs
+    // Place flags (utc<<7 | leap<<6) into seconds' upper bits without exceeding 59 range.
+    // To avoid modifying second value range, we store flags implicitly as out-of-band during integration.
+    // For now, keep seconds verbatim; flags not encoded into compact form.
+    out6[0] = dt.year;
+    out6[1] = dt.month;
+    out6[2] = dt.day;
+    out6[3] = dt.hour;
+    out6[4] = dt.minute;
+    out6[5] = dt.second;
+    (void)dt.utc; (void)dt.leapSecond; // flags reserved for expanded mapping during full integration
+    return true;
+}
+
+std::optional<DateTimeFields> ChannelStatusUtils::decode_datetime(const uint8_t* in6) {
+    if (!in6) return std::nullopt;
+    DateTimeFields dt { in6[0], in6[1], in6[2], in6[3], in6[4], in6[5], false, false };
+    if (!in_range(dt.month, 1, 12) || !in_range(dt.day, 1, 31) || !in_range(dt.hour, 0, 23) ||
+        !in_range(dt.minute, 0, 59) || !in_range(dt.second, 0, 59)) {
+        return std::nullopt;
+    }
+    return dt;
+}
+
+bool ChannelStatusUtils::set_masked_bits(uint8_t* buffer, size_t length, size_t byteIndex, uint8_t mask, uint8_t valueMasked) {
+    if (!buffer || byteIndex >= length) return false;
+    // Ensure valueMasked only occupies bits within mask
+    if ((valueMasked & ~mask) != 0) return false;
+    uint8_t current = buffer[byteIndex];
+    current &= static_cast<uint8_t>(~mask); // clear masked bits
+    current |= valueMasked;                 // set new masked bits (already aligned by caller)
+    buffer[byteIndex] = current;
+    return true;
+}
+
+std::optional<uint8_t> ChannelStatusUtils::read_masked_bits(const uint8_t* buffer, size_t length, size_t byteIndex, uint8_t mask, uint8_t shift) {
+    if (!buffer || byteIndex >= length) return std::nullopt;
+    uint8_t current = buffer[byteIndex];
+    uint8_t masked = static_cast<uint8_t>(current & mask);
+    if (shift > 0) masked = static_cast<uint8_t>(masked >> shift);
+    return masked;
+}
+
+std::optional<bool> ChannelStatusUtils::read_flag(const uint8_t* buffer, size_t length, size_t byteIndex, uint8_t mask) {
+    auto val = read_masked_bits(buffer, length, byteIndex, mask, 0);
+    if (!val.has_value()) return std::nullopt;
+    return (*val) != 0;
+}
+
+bool ChannelStatusUtils::write_flag(uint8_t* buffer, size_t length, size_t byteIndex, uint8_t mask, bool enabled) {
+    if (!buffer || byteIndex >= length) return false;
+    uint8_t current = buffer[byteIndex];
+    if (enabled) {
+        current = static_cast<uint8_t>(current | mask);
+    } else {
+        current = static_cast<uint8_t>(current & ~mask);
+    }
+    buffer[byteIndex] = current;
+    return true;
+}
+
+} // namespace core
+} // namespace _2009
+} // namespace AES11
+} // namespace AES
