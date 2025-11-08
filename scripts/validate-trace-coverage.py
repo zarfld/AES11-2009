@@ -102,6 +102,83 @@ def main() -> int:
     else:
         print('⚠️ No Test linkage metric present')
 
+    # Detailed gap report to help improve coverage
+    try:
+        req_details = metrics.get('requirement', {}).get('details', {})
+        adr_details = metrics.get('requirement_to_ADR', {}).get('details', {})
+        scen_details = metrics.get('requirement_to_scenario', {}).get('details', {})
+        test_details = metrics.get('requirement_to_test', {}).get('details', {})
+
+        def _missing_from_detail(d: dict) -> list[str]:
+            missing = []
+            for rid, refs in d.items():
+                f = refs.get('forward_refs', []) or []
+                r = refs.get('reverse_refs', []) or []
+                if len(f) == 0 and len(r) == 0:
+                    missing.append(rid)
+            return sorted(missing)
+
+        # Requirements that have no non-REQ links at all
+        reqs_no_any_link = [rid for rid, det in req_details.items() if not det.get('has_any_non_req_link', False)]
+
+        # Requirements missing category-specific links
+        reqs_missing_adr = _missing_from_detail(adr_details)
+        reqs_missing_scenario = _missing_from_detail(scen_details)
+        reqs_missing_test = _missing_from_detail(test_details)
+
+        # Orphan scenarios and tests (present in spec index but not linked by any requirement)
+        items = data.get('items', [])
+        qa_ids = [it['id'] for it in items if str(it.get('id','')).upper().startswith('QA')]
+        test_ids = [it['id'] for it in items if str(it.get('id','')).upper().startswith('TEST')]
+
+        # Determine which QA/TEST are referenced by any requirement
+        any_req_refs = set()
+        for rid, refs in adr_details.items():
+            pass  # not used for QA/TEST
+        # Scan requirement_to_scenario/test detail maps to collect referenced artifacts
+        for rid, refs in scen_details.items():
+            any_req_refs.update(refs.get('forward_refs', []) or [])
+            any_req_refs.update(refs.get('reverse_refs', []) or [])
+        for rid, refs in test_details.items():
+            any_req_refs.update(refs.get('forward_refs', []) or [])
+            any_req_refs.update(refs.get('reverse_refs', []) or [])
+
+        orphan_scenarios = sorted([q for q in qa_ids if q not in any_req_refs])
+        orphan_tests = sorted([t for t in test_ids if t not in any_req_refs])
+
+        print("\n--- Detailed coverage gaps ---")
+        if reqs_no_any_link:
+            print(f"Unlinked requirements (no ADR/DES/QA/TEST links): {len(reqs_no_any_link)}")
+            print("  "+", ".join(sorted(reqs_no_any_link)))
+        else:
+            print("All requirements have at least one non-REQ link.")
+
+        if adr_cov is not None and adr_cov < args.min_req_adr:
+            print(f"Requirements missing ADR linkage: {len(reqs_missing_adr)}")
+            if reqs_missing_adr:
+                print("  "+", ".join(reqs_missing_adr))
+
+        if scen_cov is not None and scen_cov < args.min_req_scenario:
+            print(f"Requirements missing Scenario (QA) linkage: {len(reqs_missing_scenario)}")
+            if reqs_missing_scenario:
+                print("  "+", ".join(reqs_missing_scenario))
+            if orphan_scenarios:
+                print(f"Available QA scenarios with no links: {len(orphan_scenarios)}")
+                print("  "+", ".join(orphan_scenarios))
+
+        if test_cov is not None and test_cov < args.min_req_test:
+            print(f"Requirements missing Test linkage: {len(reqs_missing_test)}")
+            if reqs_missing_test:
+                print("  "+", ".join(reqs_missing_test))
+            if orphan_tests:
+                # Usually tests are well-linked; include if any exist but unused
+                print(f"Tests present but not referenced by any requirement: {len(orphan_tests)}")
+                print("  "+", ".join(orphan_tests))
+
+    except Exception as e:
+        # Don't fail validation just because the advisory section failed
+        print(f"⚠️ Failed to compute detailed gap report: {e}")
+
     return status
 
 if __name__ == '__main__':
