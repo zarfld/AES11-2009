@@ -130,3 +130,26 @@ py -3 scripts/generate-traceability-matrix.py
 ## Traceability
 
 - Maps REQ → ARC → DES → TEST → CODE for core flow. Each test case references corresponding code unit and design ID.
+
+### Example C++ Source File Traceability Header
+
+```cpp
+/*
+ * Module: lib/Standards/AES/AES11/2009/core/dars_protocol.cpp
+ * Phase: 05-implementation
+ * Traceability:
+ *   Design: DES-C-001 (DARS Protocol Core)
+ *   Requirements: REQ-F-CS-ANNEXA-LEN, REQ-F-CS-ANNEXA-FLAGS, REQ-F-CS-ANNEXA-DT
+ *   Tests: TEST-DARS-STATE-001, TEST-DM-TIMINGWIN-001
+ * Notes:
+ *   - Update Design/Requirements/Test IDs on refactor; keep list minimal & precise.
+ */
+```
+
+### Updating Trace Links
+
+1. When a requirement or design ID changes: update the header comment and associated test case header.
+2. Run local trace generation commands (above) and inspect `reports/traceability-matrix.md` for orphaned or missing links.
+3. Ensure every new test adds its TEST-\* ID and references at least one REQ-\* and one DES-\* ID.
+4. Avoid broad, non-specific requirement lists (keep to directly implemented behaviors).
+5. CI will fail if a requirement loses all downstream links; fix by adding tests or code header entries.

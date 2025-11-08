@@ -4,14 +4,16 @@ standard: "29148"
 phase: 02-requirements
 version: 1.0.0
 author: "AI-Assisted"
-date: 2025-11-08
+date: "2025-11-08"
 status: draft
 traceability:
   stakeholderRequirements:
-    - StR-CS-002
+    - StR-FUNC-001
 ---
 
 # REQ-F-CS-ANNEXA-FLAGS: UTC and Auxiliary Flag Mapping
+
+Requirement ID: REQ-F-CS-ANNEXA-FLAGS
 
 ## Statement
 

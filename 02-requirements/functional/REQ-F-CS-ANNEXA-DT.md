@@ -4,14 +4,16 @@ standard: "29148"
 phase: 02-requirements
 version: 1.0.0
 author: "AI-Assisted"
-date: 2025-11-08
+date: "2025-11-08"
 status: draft
 traceability:
   stakeholderRequirements:
-    - StR-CS-004
+    - StR-FUNC-001
 ---
 
 # REQ-F-CS-ANNEXA-DT: Date/Time Field Mapping
+
+Requirement ID: REQ-F-CS-ANNEXA-DT
 
 ## Statement
 
