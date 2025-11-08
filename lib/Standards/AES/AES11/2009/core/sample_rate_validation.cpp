@@ -6,10 +6,9 @@
 #include <cmath>
 #include <limits>
 
-#ifdef AES5_INTEGRATION
-#include "AES/AES5/2018/rates/standard_sampling_rates.hpp"
-using AES::AES5::_2018::rates::StandardSamplingRates;
-#endif
+// NOTE: AES5 integration headers are intentionally not included here due to
+// repository-relative includes in AES5 headers. We keep a clean fallback
+// that validates known AES5 standard rates and ppm tolerance locally.
 
 namespace AES {
 namespace AES11 {
@@ -17,16 +16,12 @@ namespace _2009 {
 namespace core {
 
 bool SampleRateValidator::is_aes5_standard(uint32_t rateHz) {
-#ifdef AES5_INTEGRATION
-    return StandardSamplingRates::is_standard_rate(rateHz);
-#else
     // Fallback minimal set if AES5 repository not available
     switch (rateHz) {
         case 32000u: case 44100u: case 48000u: case 96000u: case 192000u: return true;
         case 88200u: case 176400u: return true; // multiples of 44.1 kHz
         default: return false;
     }
-#endif
 }
 
 static inline double ppm_error(double nominalHz, double measuredHz) {

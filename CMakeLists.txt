@@ -25,27 +25,24 @@ target_include_directories(aes11_standards PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/Standards
 )
 
-# Optional AES5 integration (external repo) for standard sampling frequencies
-option(AES5_INTEGRATION "Enable integration with external AES5 repository" ON)
+# Optional AES5 integration via git submodule similar to AES3
+option(AES5_INTEGRATION "Enable integration with AES5 repository (prefers git submodule)" ON)
+if(AES5_INTEGRRATION)
+  message(WARNING "Typo in AES5 integration option variable detected; disabling integration.")
+endif()
 if(AES5_INTEGRATION)
-  include(FetchContent)
-  FetchContent_Declare(
-    aes5_2018
-    GIT_REPOSITORY https://github.com/zarfld/AES5-2018.git
-    GIT_TAG        main
-  )
-  # Populate sources only, do not process AES5's CMake to avoid extraneous subdirs
-  FetchContent_GetProperties(aes5_2018)
-  if(NOT aes5_2018_POPULATED)
-    FetchContent_Populate(aes5_2018)
-  endif()
-  # Public includes for AES5 headers
-  if(DEFINED aes5_2018_SOURCE_DIR)
+  set(AES5_SUBMODULE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/AES5-2018)
+  if(EXISTS ${AES5_SUBMODULE_DIR}/lib/Standards/AES/AES5/2018/core)
+    message(STATUS "Using AES5 git submodule at external/AES5-2018")
+    # Headers only for now; AES5 repo may later expose its own targets.
     target_include_directories(aes11_standards PUBLIC
-      ${aes5_2018_SOURCE_DIR}/include
+      ${AES5_SUBMODULE_DIR}/lib/Standards
+      ${AES5_SUBMODULE_DIR}/lib/Standards/Common/interfaces
     )
+    target_compile_definitions(aes11_standards PUBLIC AES5_INTEGRATION=1)
+  else()
+    message(WARNING "AES5 submodule not found at external/AES5-2018. Disable AES5 integration or initialize submodule.")
   endif()
-  target_compile_definitions(aes11_standards PUBLIC AES5_INTEGRATION=1)
 endif()
 
 # Optional AES3 integration toggle (external repo). Default OFF in this repo.
