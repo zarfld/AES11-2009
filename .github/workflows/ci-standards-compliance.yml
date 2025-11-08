@@ -202,6 +202,8 @@ jobs:
   # Phase 05: TDD - Test-Driven Development
   cxx-implementation:
     name: C++ Standards Layer Build & Tests (Phase 05 TDD)
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     needs: [spec-generation]
     steps:
@@ -209,7 +211,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Install build tools
         if: ${{ hashFiles('CMakeLists.txt') != '' }}
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake gcov
       - name: Configure (CMake)
         if: ${{ hashFiles('CMakeLists.txt') != '' }}
         run: cmake -S . -B build -DBUILD_TESTS=ON
@@ -225,6 +227,47 @@ jobs:
         with:
           name: cxx-test-results
           path: build/Testing
+      - name: Generate C++ coverage (gcovr)
+        if: ${{ hashFiles('CMakeLists.txt') != '' }}
+        run: |
+          pip3 install --user gcovr
+          python3 scripts/ci/generate-cpp-coverage.py || { echo "❌ Coverage generation failed"; exit 1; }
+      - name: Create coverage badge
+        if: ${{ hashFiles('CMakeLists.txt') != '' }}
+        run: python3 scripts/ci/make-coverage-badge.py
+      - name: Enforce coverage threshold
+        if: ${{ hashFiles('CMakeLists.txt') != '' }}
+        run: |
+          THRESH=${{ env.MIN_TEST_COVERAGE }}
+          PCT=$(python3 -c "import json,sys;d=json.load(open('build/coverage/summary.json'));print(int(round(float(d.get('line_coverage_percent',0.0)))))")
+          echo "Line coverage: ${PCT}% (threshold ${THRESH}%)"
+          if [ "$PCT" -lt "$THRESH" ]; then
+            echo "❌ Coverage below threshold"; exit 1; fi
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cxx-coverage
+          path: |
+            build/coverage/coverage.json
+            build/coverage/coverage.xml
+            build/coverage/coverage.txt
+            build/coverage/summary.json
+            build/coverage/coverage-badge.svg
+      - name: Publish coverage badge to docs (default branch)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        run: |
+          mkdir -p docs/badges
+          cp build/coverage/coverage-badge.svg docs/badges/coverage.svg
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add docs/badges/coverage.svg
+          if ! git diff --cached --quiet; then
+            git commit -m "ci: update coverage badge"
+            git push
+          else
+            echo "No badge changes to commit"
+          fi
   unit-tests:
     name: Unit Tests (XP - TDD Red-Green-Refactor)
     runs-on: ${{ matrix.os }}
@@ -731,6 +774,7 @@ jobs:
           | Linting | 0 errors | ${{ needs['code-quality'].result == 'success' && '✅' || '❌' }} |
           | Security Vulnerabilities | 0 high/critical | ${{ needs['security-scan'].result == 'success' && '✅' || '⚠️' }} |
           | Requirements Traceability | 100% | ${{ needs['requirements-traceability'].result == 'success' && '✅' || '❌' }} |
+           | C++ Line Coverage | ≥${{ env.MIN_TEST_COVERAGE }}% | ${{ needs['cxx-implementation'].result == 'success' && '✅' || '❌' }} |
 
           ## Overall Status
 

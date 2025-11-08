@@ -1,10 +1,14 @@
 # AES-11-2009 Hardware-Agnostic Implementation
 
+![Coverage](docs/badges/coverage.svg)
+
 A hardware-agnostic, platform-independent implementation of the **AES-11-2009 Digital Audio Reference Signal (DARS)** standard, enabling audio equipment manufacturers and developers to integrate standards-compliant digital audio synchronization with minimal complexity.
+
 
 ## 🎯 Purpose
 
 This project delivers:
+
 - **100% AES-11-2009 compliant** DARS implementation
 - **Platform-independent** design (no vendor or OS-specific code)
 - **Real-time safe** for professional audio applications
@@ -35,7 +39,7 @@ This project delivers:
 
 ## 📁 Repository Structure
 
-```
+```text
 copilot-instructions-template/
 ├── .github/
 │   ├── copilot-instructions.md          # Root Copilot instructions
@@ -211,12 +215,13 @@ Each phase enforces relevant standards:
 
 - **Standards compliance** checking via GitHub Actions
 - **Requirements traceability** validation
-- **Test coverage** enforcement (XP: >80%)
+- **Test coverage** enforcement (XP: >80% lines)
 - **Documentation completeness** checks
 
 ### Review Gates
 
 Each phase includes:
+
 - ✅ Entry criteria checklist
 - ✅ Phase activities checklist
 - ✅ Exit criteria validation
@@ -248,6 +253,7 @@ Each phase includes:
 ## 🤝 Contributing
 
 This template is designed to be:
+
 - **Forked** for your organization
 - **Customized** to your processes
 - **Extended** with your practices
@@ -266,4 +272,11 @@ This template is designed to be:
 
 ---
 
-**Ready to build standards-compliant software with AI assistance? Start with Phase 01! 🚀**
+## Get Started
+
+Ready to build standards-compliant software with AI assistance? Start with Phase 01! 🚀
+
+## Notes on Coverage
+
+- We enforce line coverage ≥ 80% for C++ builds in CI. A generated badge is published at `docs/badges/coverage.svg` on the default branch after successful runs.
+- Branch/decision coverage is not enforced at this time due to cross-platform toolchain variance; we may introduce branch coverage gates in Phase 06 once the toolchain is stabilized.
