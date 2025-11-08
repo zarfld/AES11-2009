@@ -16,9 +16,12 @@ using AES::AES11::_2009::core::ChannelStatusUtils;
 using Common::reliability::ReliabilityMetrics;
 
 TEST(ReliabilityMetricsTests, CountersStartAtZero) {
+    ReliabilityMetrics::resetForTesting();
     auto snap = ReliabilityMetrics::snapshot();
     EXPECT_EQ(snap.utcFailures, 0u);
     EXPECT_EQ(snap.dateTimeFailures, 0u);
+    EXPECT_EQ(snap.leapSecondFailures, 0u);
+    EXPECT_EQ(snap.timezoneFailures, 0u);
 }
 
 TEST(ReliabilityMetricsTests, UtcFailureIncrementsCounter) {
@@ -35,6 +38,30 @@ TEST(ReliabilityMetricsTests, DateTimeFailureIncrementsCounter) {
     EXPECT_FALSE(ChannelStatusUtils::set_datetime_info(buf, sizeof(buf), dt));
     auto snap = ReliabilityMetrics::snapshot();
     EXPECT_GE(snap.dateTimeFailures, 1u);
+}
+
+TEST(ReliabilityMetricsTests, LeapSecondRuleFailureIncrementsCounter) {
+    ReliabilityMetrics::resetForTesting();
+    uint8_t buf[24]{};
+    // Invalid: leapSecond true but second != 59
+    AES::AES11::_2009::core::DateTimeFields dt{25, 11, 5, 12, 30, 10, true, true};
+    EXPECT_FALSE(ChannelStatusUtils::set_datetime_info(buf, sizeof(buf), dt));
+    auto snap = ReliabilityMetrics::snapshot();
+    EXPECT_GE(snap.leapSecondFailures, 1u);
+    EXPECT_EQ(snap.dateTimeFailures, 1u); // still counts toward dateTimeFailures
+}
+
+TEST(ReliabilityMetricsTests, TimezoneOutOfRangeIncrementsCounter) {
+    ReliabilityMetrics::resetForTesting();
+    uint8_t buf[24]{};
+    AES::AES11::_2009::core::UTCInfo info{};
+    info.utcValid = true;
+    info.leapSecondPending = false;
+    info.timezoneOffsetMinutes = 2000; // out of range
+    EXPECT_FALSE(ChannelStatusUtils::set_utc_info(buf, sizeof(buf), info));
+    auto snap = ReliabilityMetrics::snapshot();
+    EXPECT_GE(snap.timezoneFailures, 1u);
+    EXPECT_GE(snap.utcFailures, 1u); // still part of utcFailures
 }
 
 TEST(ReliabilityMetricsTests, IndependentCountersAccumulate) {

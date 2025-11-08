@@ -18,6 +18,8 @@ namespace reliability {
 struct MetricsSnapshot {
     uint64_t utcFailures{0};
     uint64_t dateTimeFailures{0};
+    uint64_t leapSecondFailures{0};
+    uint64_t timezoneFailures{0};
 };
 
 class ReliabilityMetrics {
@@ -25,9 +27,14 @@ public:
     // Increment counters
     static void incrementUtcFailure();
     static void incrementDateTimeFailure();
+    static void incrementLeapSecondFailure();
+    static void incrementTimezoneFailure();
 
     // Return current values (non-resetting)
     static MetricsSnapshot snapshot();
+
+    // Test support: reset all counters to zero for deterministic assertions
+    static void resetForTesting();
 };
 
 } // namespace reliability

@@ -15,6 +15,8 @@ namespace reliability {
 
 static std::atomic<uint64_t> g_utcFailures{0};
 static std::atomic<uint64_t> g_dateTimeFailures{0};
+static std::atomic<uint64_t> g_leapSecondFailures{0};
+static std::atomic<uint64_t> g_timezoneFailures{0};
 
 void ReliabilityMetrics::incrementUtcFailure() {
     g_utcFailures.fetch_add(1, std::memory_order_relaxed);
@@ -24,11 +26,28 @@ void ReliabilityMetrics::incrementDateTimeFailure() {
     g_dateTimeFailures.fetch_add(1, std::memory_order_relaxed);
 }
 
+void ReliabilityMetrics::incrementLeapSecondFailure() {
+    g_leapSecondFailures.fetch_add(1, std::memory_order_relaxed);
+}
+
+void ReliabilityMetrics::incrementTimezoneFailure() {
+    g_timezoneFailures.fetch_add(1, std::memory_order_relaxed);
+}
+
 MetricsSnapshot ReliabilityMetrics::snapshot() {
     MetricsSnapshot s{};
     s.utcFailures = g_utcFailures.load(std::memory_order_relaxed);
     s.dateTimeFailures = g_dateTimeFailures.load(std::memory_order_relaxed);
+    s.leapSecondFailures = g_leapSecondFailures.load(std::memory_order_relaxed);
+    s.timezoneFailures = g_timezoneFailures.load(std::memory_order_relaxed);
     return s;
+}
+
+void ReliabilityMetrics::resetForTesting() {
+    g_utcFailures.store(0, std::memory_order_relaxed);
+    g_dateTimeFailures.store(0, std::memory_order_relaxed);
+    g_leapSecondFailures.store(0, std::memory_order_relaxed);
+    g_timezoneFailures.store(0, std::memory_order_relaxed);
 }
 
 } // namespace reliability

@@ -159,6 +159,7 @@ std::optional<UTCInfo> ChannelStatusUtils::extract_utc_info(const uint8_t* chann
     int16_t signedVal = static_cast<int16_t>((hi << 8) | lo);
     info.timezoneOffsetMinutes = signedVal;
     if (!tz_offset_in_range(info.timezoneOffsetMinutes)) {
+        Common::reliability::ReliabilityMetrics::incrementTimezoneFailure();
         return std::nullopt;
     }
     return info;
@@ -173,6 +174,7 @@ bool ChannelStatusUtils::set_utc_info(uint8_t* channelStatus, size_t length, con
     }
     if (!tz_offset_in_range(info.timezoneOffsetMinutes)) {
         Common::reliability::ReliabilityMetrics::incrementUtcFailure();
+        Common::reliability::ReliabilityMetrics::incrementTimezoneFailure();
         return false;
     }
     // Write flags
@@ -207,6 +209,9 @@ bool ChannelStatusUtils::set_datetime_info(uint8_t* channelStatus, size_t length
     }
     if (!dt_fields_in_range(dt)) {
         Common::reliability::ReliabilityMetrics::incrementDateTimeFailure();
+        if (dt.leapSecond && dt.second != 59) {
+            Common::reliability::ReliabilityMetrics::incrementLeapSecondFailure();
+        }
         return false;
     }
     // Write UTC flag and leap-second into UTC flags byte, reuse existing helpers
@@ -238,7 +243,12 @@ std::optional<DateTimeFields> ChannelStatusUtils::extract_datetime_info(const ui
     if (!utcFlag.has_value() || !leapFlag.has_value()) return std::nullopt;
     dt.utc = *utcFlag;
     dt.leapSecond = *leapFlag;
-    if (!dt_fields_in_range(dt)) return std::nullopt;
+    if (!dt_fields_in_range(dt)) {
+        if (dt.leapSecond && dt.second != 59) {
+            Common::reliability::ReliabilityMetrics::incrementLeapSecondFailure();
+        }
+        return std::nullopt;
+    }
     return dt;
 }
 
