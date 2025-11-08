@@ -1340,7 +1340,7 @@ Scenario: Exceed cascade limits and require re-reference
 
 Requirements for platform-independent hardware interfaces per StR-FUNC-002.
 
-#### REQ-F-HAL-001: Audio Interface Abstraction
+#### REQ-F-HAL-001: Audio Interface Abstraction [ADR: ADR-001, ADR-002] [Design: DES-C-001, DES-C-002, DES-I-001] [Tests: TEST-DARS-STATE-001, TEST-SYNC-SELECT-001] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-FUNC-002, StR-USER-001
 - **Priority**: Critical (P0)
@@ -1439,7 +1439,7 @@ Scenario: Handle unsupported sample rate
 
 ---
 
-#### REQ-F-HAL-002: Timing Interface Abstraction [Tests: TEST-TIMESRC-SNAPSHOT-001, TEST-TIMESRC-SNAPSHOT-002]
+#### REQ-F-HAL-002: Timing Interface Abstraction [ADR: ADR-003] [Design: DES-C-003, DES-D-002] [Tests: TEST-TIMESRC-SNAPSHOT-001, TEST-TIMESRC-SNAPSHOT-002, TEST-SYNC-HOLDOVER-001] [Scenario: QA-SC-001, QA-SC-003]
 
 - **Trace to**: StR-FUNC-002, StR-PERF-001
 - **Priority**: Critical (P0)
@@ -1537,7 +1537,7 @@ Scenario: Timing resolution query
 
 ---
 
-#### REQ-F-HAL-003: Synchronization Interface Abstraction
+#### REQ-F-HAL-003: Synchronization Interface Abstraction [ADR: ADR-002, ADR-003, ADR-004] [Design: DES-C-002, DES-C-003] [Tests: TEST-SYNC-SELECT-001, TEST-SYNC-RESELECT-001, TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-001, QA-SC-002]
 
 - **Trace to**: StR-FUNC-002, StR-FUNC-001
 - **Priority**: Critical (P0)
@@ -1668,7 +1668,7 @@ Scenario: Lock status monitoring with quality metrics
 
 ---
 
-#### REQ-F-HAL-004: GPIO and External Signal Interface Abstraction
+#### REQ-F-HAL-004: GPIO and External Signal Interface Abstraction [ADR: ADR-002, ADR-003, ADR-005] [Design: DES-C-002] [Tests: TEST-SYNC-DEGRADE-001, TEST-GPS-REF-001] [Scenario: QA-SC-002, QA-SC-003]
 
 - **Trace to**: StR-FUNC-002
 - **Priority**: High (P1)
@@ -1768,7 +1768,7 @@ Scenario: Lock status LED output for diagnostics
 
 ---
 
-#### REQ-F-HAL-005: Memory Management Interface Abstraction
+#### REQ-F-HAL-005: Memory Management Interface Abstraction [ADR: ADR-004] [Design: DES-C-003] [Tests: TEST-DM-TIMINGWIN-001, TEST-DM-TIMINGWIN-002] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-FUNC-002, StR-PERF-004
 - **Priority**: High (P1)
@@ -1886,7 +1886,7 @@ Scenario: Detect memory leak in debug build
 
 ---
 
-#### REQ-F-HAL-006: Platform Capabilities Discovery Interface
+#### REQ-F-HAL-006: Platform Capabilities Discovery Interface [ADR: ADR-004, ADR-005] [Design: DES-C-003] [Tests: TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-FUNC-002, StR-COMP-001
 - **Priority**: Medium (P2)
@@ -1988,7 +1988,7 @@ Scenario: Adapt code path based on SIMD availability
 
 ---
 
-#### REQ-F-HAL-007: Thread Safety and Concurrency Control Interface
+#### REQ-F-HAL-007: Thread Safety and Concurrency Control Interface [ADR: ADR-004] [Design: DES-C-003] [Tests: TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-FUNC-002, StR-PERF-004
 - **Priority**: High (P1)
@@ -3881,7 +3881,7 @@ Scenario: Monitor performance counters over time
 
 Requirements for integration with external standards repositories and build system per StR-FUNC-004.
 
-#### REQ-F-INTEG-001: AES3-2009 Repository Integration
+#### REQ-F-INTEG-001: AES3-2009 Repository Integration [ADR: ADR-002] [Design: DES-C-001] [Tests: TEST-DARS-STATE-001] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-FUNC-004, StR-COMP-002
 - **Priority**: Critical (P0)
@@ -3995,7 +3995,7 @@ Scenario: Compile-time API compatibility verification
 
 ---
 
-#### REQ-F-INTEG-002: AES5-2018 Repository Integration
+#### REQ-F-INTEG-002: AES5-2018 Repository Integration [ADR: ADR-005] [Design: DES-C-001] [Tests: TEST-DARS-STATE-001] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-FUNC-004, StR-COMP-002  
 - **Priority**: Critical (P0)
@@ -4109,7 +4109,7 @@ Scenario: AES5-2018 repository integration build test
 
 ---
 
-#### REQ-F-INTEG-003: Cross-Repository Namespace Isolation
+#### REQ-F-INTEG-003: Cross-Repository Namespace Isolation [ADR: ADR-001, ADR-005] [Design: DES-C-001, DES-C-003] [Tests: TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-COMP-002, ADR-ARCH-001 (assumed from architecture)
 - **Priority**: High (P1)
@@ -4222,7 +4222,7 @@ Scenario: Static analysis verifies namespace discipline
 
 ---
 
-#### REQ-F-INTEG-004: CMake Dependency Version Management
+#### REQ-F-INTEG-004: CMake Dependency Version Management [ADR: ADR-005] [Design: DES-C-003] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-COMP-001, StR-MAINT-002
 - **Priority**: High (P1)
@@ -4334,7 +4334,7 @@ Non-functional requirements define quality attributes, performance characteristi
 
 Requirements for system performance characteristics per StR-PERF-xxx.
 
-#### REQ-NF-PERF-001: Real-Time Processing Latency
+#### REQ-NF-PERF-001: Real-Time Processing Latency [ADR: ADR-003] [Design: DES-C-003] [Tests: TEST-DM-TIMINGWIN-001, TEST-TIMESRC-SNAPSHOT-001] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-PERF-001, StR-FUNC-001
 - **Priority**: Critical (P0)
@@ -4437,7 +4437,7 @@ Scenario: Maintain latency under high CPU load
 
 ---
 
-#### REQ-NF-PERF-002: Throughput and Sample Rate Support
+#### REQ-NF-PERF-002: Throughput and Sample Rate Support [ADR: ADR-004] [Design: DES-C-003] [Tests: TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-PERF-001, StR-FUNC-002
 - **Priority**: Critical (P0)
@@ -4484,7 +4484,7 @@ Scenario: Sustain 192 kHz sample rate for 24 hours
 
 ---
 
-#### REQ-NF-PERF-003: Timing Accuracy and Jitter [Tests: TEST-DM-TIMINGWIN-001, TEST-DM-TIMINGWIN-002]
+#### REQ-NF-PERF-003: Timing Accuracy and Jitter [ADR: ADR-003, ADR-004] [Design: DES-C-003] [Tests: TEST-DM-TIMINGWIN-001] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-PERF-002, StR-FUNC-001
 - **Priority**: Critical (P0)
@@ -4517,7 +4517,7 @@ Scenario: Verify Grade 1 timing accuracy with GPS reference
 
 ---
 
-#### REQ-NF-PERF-004: Resource Utilization
+#### REQ-NF-PERF-004: Resource Utilization [ADR: ADR-004] [Design: DES-C-003] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-PERF-003, StR-COMP-001
 - **Priority**: High (P1)
@@ -4551,7 +4551,7 @@ Scenario: Verify CPU utilization on embedded platform
 
 ---
 
-#### REQ-NF-PERF-005: Scalability and Concurrency
+#### REQ-NF-PERF-005: Scalability and Concurrency [ADR: ADR-004] [Design: DES-C-003] [Tests: TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-PERF-004, StR-COMP-003
 - **Priority**: Medium (P2)
@@ -4588,7 +4588,7 @@ Scenario: Verify linear scaling with multiple instances
 
 Requirements for system reliability and fault tolerance per IEEE 1633-2016 Software Reliability Engineering and StR-REL-xxx.
 
-#### REQ-NF-REL-001: Mean Time Between Failures (MTBF)
+#### REQ-NF-REL-001: Mean Time Between Failures (MTBF) [ADR: ADR-004] [Design: DES-C-003] [Tests: TEST-SYNC-HOLDOVER-001] [Scenario: QA-SC-002]
 
 - **Trace to**: StR-REL-001, StR-QUAL-001
 - **Priority**: Critical (P0)
@@ -4621,7 +4621,7 @@ Scenario: Verify MTBF target through accelerated life testing
 
 ---
 
-#### REQ-NF-REL-002: Availability and Uptime
+#### REQ-NF-REL-002: Availability and Uptime [ADR: ADR-004] [Design: DES-C-003] [Tests: TEST-SYNC-HOLDOVER-001] [Scenario: QA-SC-002]
 
 - **Trace to**: StR-REL-001, StR-REL-002
 - **Priority**: Critical (P0)
@@ -4654,7 +4654,7 @@ Scenario: Verify 99.9% availability over one year
 
 ---
 
-#### REQ-NF-REL-003: Error Recovery and Fault Tolerance
+#### REQ-NF-REL-003: Error Recovery and Fault Tolerance [ADR: ADR-004] [Design: DES-C-003] [Tests: TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-002]
 
 - **Trace to**: StR-REL-002, StR-REL-003
 - **Priority**: Critical (P0)
@@ -4687,7 +4687,7 @@ Scenario: Automatically recover from GPS reference loss
 
 ---
 
-#### REQ-NF-REL-004: Data Integrity and Consistency
+#### REQ-NF-REL-004: Data Integrity and Consistency [ADR: ADR-004] [Design: DES-C-003] [Scenario: QA-SC-002]
 
 - **Trace to**: StR-REL-003, StR-QUAL-002
 - **Priority**: High (P1)
@@ -4713,7 +4713,7 @@ Scenario: Detect configuration data corruption
 
 ---
 
-#### REQ-NF-REL-005: Graceful Degradation
+#### REQ-NF-REL-005: Graceful Degradation [ADR: ADR-004] [Design: DES-C-003] [Tests: TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-002]
 
 - **Trace to**: StR-REL-002, StR-USER-003
 - **Priority**: High (P1)
@@ -4739,7 +4739,7 @@ Scenario: Maintain DARS generation when diagnostics fail
 
 ---
 
-#### REQ-NF-REL-006: Reliability Testing and Validation
+#### REQ-NF-REL-006: Reliability Testing and Validation [ADR: ADR-004] [Design: DES-C-003] [Scenario: QA-SC-002]
 
 - **Trace to**: StR-REL-003, StR-QUAL-003
 - **Priority**: Medium (P2)
@@ -4769,7 +4769,7 @@ Scenario: Complete 168-hour burn-in test
 
 Requirements for system security and robustness per StR-SEC-xxx.
 
-#### REQ-NF-SEC-001: Input Validation and Sanitization
+#### REQ-NF-SEC-001: Input Validation and Sanitization [ADR: ADR-004] [Design: DES-C-003] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-SEC-001, StR-REL-003
 - **Priority**: High (P1)
@@ -4795,7 +4795,7 @@ Scenario: Reject invalid sample rate parameter
 
 ---
 
-#### REQ-NF-SEC-002: Resource Limits and DoS Prevention
+#### REQ-NF-SEC-002: Resource Limits and DoS Prevention [ADR: ADR-004] [Design: DES-C-003] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-SEC-001, StR-PERF-003
 - **Priority**: High (P1)
@@ -4820,7 +4820,7 @@ Scenario: Enforce maximum DARS instance limit
 
 ---
 
-#### REQ-NF-SEC-003: Secure Coding Practices
+#### REQ-NF-SEC-003: Secure Coding Practices [ADR: ADR-004] [Design: DES-C-003] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-SEC-001, StR-QUAL-002
 - **Priority**: Medium (P2)
@@ -4845,7 +4845,7 @@ Scenario: Pass static analysis with zero critical defects
 
 ---
 
-#### REQ-NF-SEC-004: Audit Logging for Security Events
+#### REQ-NF-SEC-004: Audit Logging for Security Events [ADR: ADR-004] [Design: DES-C-003] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-SEC-001, StR-USER-003
 - **Priority**: Medium (P2)
@@ -4875,7 +4875,7 @@ Scenario: Log configuration change with audit trail
 
 Requirements for system maintainability and supportability per StR-MAINT-xxx.
 
-#### REQ-NF-MAINT-001: Code Modularity and Structure
+#### REQ-NF-MAINT-001: Code Modularity and Structure [ADR: ADR-001, ADR-004] [Design: DES-C-003] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-COMP-002, StR-QUAL-002
 - **Priority**: High (P1)
@@ -4900,7 +4900,7 @@ Scenario: Verify module independence
 
 ---
 
-#### REQ-NF-MAINT-002: Documentation Completeness
+#### REQ-NF-MAINT-002: Documentation Completeness [ADR: ADR-001] [Design: DES-C-003] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-USER-003, StR-QUAL-002
 - **Priority**: High (P1)
@@ -4926,7 +4926,7 @@ Scenario: Verify API documentation coverage
 
 ---
 
-#### REQ-NF-MAINT-003: Testability and Debug Support
+#### REQ-NF-MAINT-003: Testability and Debug Support [ADR: ADR-001, ADR-004] [Design: DES-C-003] [Tests: TEST-DARS-STATE-001] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-QUAL-002, StR-QUAL-003
 - **Priority**: High (P1)
@@ -4951,7 +4951,7 @@ Scenario: Execute unit tests with mock interfaces
 
 ---
 
-#### REQ-NF-MAINT-004: Change Impact Analysis
+#### REQ-NF-MAINT-004: Change Impact Analysis [ADR: ADR-001] [Design: DES-C-003] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-COMP-002, StR-QUAL-002
 - **Priority**: Medium (P2)
@@ -4981,7 +4981,7 @@ Scenario: Analyze impact of requirement change
 
 Requirements for platform portability and standards compliance per StR-COMP-xxx.
 
-#### REQ-NF-PORT-001: Platform Independence
+#### REQ-NF-PORT-001: Platform Independence [ADR: ADR-001, ADR-005] [Design: DES-C-001, DES-C-003] [Tests: TEST-SYNC-SELECT-001] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-COMP-001, StR-COMP-003
 - **Priority**: Critical (P0)
@@ -5006,7 +5006,7 @@ Scenario: Compile Standards layer on all target platforms
 
 ---
 
-#### REQ-NF-PORT-002: Compiler and Toolchain Support
+#### REQ-NF-PORT-002: Compiler and Toolchain Support [ADR: ADR-001] [Design: DES-C-003] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-COMP-001, StR-COMP-002
 - **Priority**: High (P1)
