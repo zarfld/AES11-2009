@@ -1,0 +1,7 @@
+# Machine-readable defect log for DDR computation
+# Fields: id, title, component, severity, fdsScore, discoveredOn (YYYY-MM-DD), status (Open|Closed), rootCause, testId, resolution
+# Add entries chronologically; do not reorder. Closed items retain original discoveredOn date.
+# Example severity to FDSC mapping: Critical=10, High=8, Medium=5, Low=2.
+# Initially empty; append first real entry when a defect is found.
+
+items: []
