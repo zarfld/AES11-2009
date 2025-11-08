@@ -64,39 +64,32 @@ def main() -> int:
     json_path = out_dir / "coverage.json"
     xml_path = out_dir / "coverage.xml"
     txt_path = out_dir / "coverage.txt"
-    run([
+    lib_filter = str(root / "lib")
+    # Common gcovr args: restrict to our sources and ignore CMake internals
+    common_args = [
         gcovr_bin,
         "-r",
         str(root),
         "--object-directory",
         str(build_dir),
+        "--filter",
+        lib_filter,
+        "--exclude",
+        r".*CMakeFiles.*",
+        "--exclude",
+        r".*CompilerId(C|CXX).*",
         "--exclude-directories",
         "external",
-        "--json",
-        str(json_path),
-    ])
-    run([
-        gcovr_bin,
-        "-r",
-        str(root),
-        "--object-directory",
-        str(build_dir),
         "--exclude-directories",
-        "external",
-        "--xml",
-        str(xml_path),
-    ])
+        "_deps",
+        "--gcov-ignore-errors",
+        "no_working_dir_found",
+    ]
+    run(common_args + ["--json", str(json_path)])
+    run(common_args + ["--xml", str(xml_path)])
     # Human readable summary
     with open(txt_path, "w", encoding="utf-8") as ftxt:
-        subprocess.check_call([
-            gcovr_bin,
-            "-r",
-            str(root),
-            "--object-directory",
-            str(build_dir),
-            "--exclude-directories",
-            "external",
-        ], stdout=ftxt)
+        subprocess.check_call(common_args, stdout=ftxt)
 
     # Summarize
     data = json.loads(json_path.read_text(encoding="utf-8"))
