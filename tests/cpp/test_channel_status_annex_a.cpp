@@ -64,6 +64,46 @@ TEST(ChannelStatusAnnexATests, RejectsInsufficientBuffer) {
     EXPECT_FALSE(ChannelStatusUtils::extract_utc_info(small, sizeof(small)).has_value());
 }
 
+// New RED tests: enforce minimum channel status length (kChannelStatusMinBytes)
+// Currently implementation only checks highest accessed index; these tests codify
+// REQ-F-CS-ANNEXA-LEN that any Annex A mapping operation requires full 24-byte block.
+// Expect failure for sub-minimum buffers (e.g., length 20) even though indices are in-range.
+TEST(ChannelStatusAnnexATests, RejectsSubMinimumLengthBufferUtc) {
+    uint8_t partial[20]{}; // indices up to 19 exist but < required 24 bytes
+    UTCInfo in{};
+    in.utcValid = true;
+    in.leapSecondPending = false;
+    in.timezoneOffsetMinutes = 0;
+    EXPECT_FALSE(ChannelStatusUtils::set_utc_info(partial, sizeof(partial), in));
+    EXPECT_FALSE(ChannelStatusUtils::extract_utc_info(partial, sizeof(partial)).has_value());
+}
+
+TEST(ChannelStatusAnnexATests, RejectsSubMinimumLengthBufferDateTime) {
+    uint8_t partial[20]{}; // length below kChannelStatusMinBytes
+    AES::AES11::_2009::core::DateTimeFields dt{25, 11, 7, 14, 30, 45, true, false};
+    EXPECT_FALSE(ChannelStatusUtils::set_datetime_info(partial, sizeof(partial), dt));
+    EXPECT_FALSE(ChannelStatusUtils::extract_datetime_info(partial, sizeof(partial)).has_value());
+}
+
+TEST(ChannelStatusAnnexATests, RejectsZeroLengthBufferUtc) {
+    uint8_t* none = nullptr; // simulate null pointer usage separately
+    UTCInfo in{};
+    EXPECT_FALSE(ChannelStatusUtils::set_utc_info(nullptr, 0, in));
+    EXPECT_FALSE(ChannelStatusUtils::extract_utc_info(nullptr, 0).has_value());
+    uint8_t zeroLen[1]{}; // length 1 still below minimum
+    EXPECT_FALSE(ChannelStatusUtils::set_utc_info(zeroLen, 0, in));
+    EXPECT_FALSE(ChannelStatusUtils::extract_utc_info(zeroLen, 0).has_value());
+}
+
+TEST(ChannelStatusAnnexATests, RejectsZeroLengthBufferDateTime) {
+    AES::AES11::_2009::core::DateTimeFields dt{25, 11, 7, 14, 30, 45, true, false};
+    EXPECT_FALSE(ChannelStatusUtils::set_datetime_info(nullptr, 0, dt));
+    EXPECT_FALSE(ChannelStatusUtils::extract_datetime_info(nullptr, 0).has_value());
+    uint8_t buf[1]{};
+    EXPECT_FALSE(ChannelStatusUtils::set_datetime_info(buf, 0, dt));
+    EXPECT_FALSE(ChannelStatusUtils::extract_datetime_info(buf, 0).has_value());
+}
+
 // New: DST flag roundtrip using implementation-defined mapping
 TEST(ChannelStatusAnnexATests, DstFlagRoundTrip) {
     uint8_t cs[24]{};

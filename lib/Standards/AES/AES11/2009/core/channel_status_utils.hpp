@@ -10,6 +10,7 @@
 #include <array>
 #include <ctime>
 #include <optional>
+#include "channel_status_constants.hpp"
 
 namespace AES {
 namespace AES11 {

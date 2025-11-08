@@ -1,4 +1,5 @@
 #include "channel_status_utils.hpp"
+#include "channel_status_constants.hpp"
 
 #include <cstring>
 
@@ -7,7 +8,9 @@ namespace AES11 {
 namespace _2009 {
 namespace core {
 
-static constexpr size_t CS_BYTE4_INDEX = 3; // zero-based: byte 4 is index 3
+using namespace AES::AES11::_2009::core::constants;
+
+static constexpr size_t CS_BYTE4_INDEX = kByte4Index; // zero-based: byte 4 is index 3 (from constants)
 
 DARSGrade ChannelStatusUtils::extract_grade(const uint8_t* channelStatus, size_t length) {
     if (!channelStatus || length <= CS_BYTE4_INDEX) return DARSGrade::Unknown;
@@ -108,21 +111,21 @@ bool ChannelStatusUtils::write_flag(uint8_t* buffer, size_t length, size_t byteI
 
 // --- Annex A UTC / Timezone mapping ---
 // Assumed byte positions within channel status block (see header notes):
-static constexpr size_t CS_UTC_FLAGS_INDEX = 17; // byte 18 (zero-based index 17)
-static constexpr uint8_t CS_UTC_VALID_MASK = 0x01; // bit 0
-static constexpr uint8_t CS_LEAP_PENDING_MASK = 0x02; // bit 1
-static constexpr uint8_t CS_DST_MASK = 0x04; // bit 2 (implementation-defined DST flag)
-static constexpr uint8_t CS_NON_AUDIO_MASK = 0x08; // bit 3 (implementation-defined non-audio/content-type flag)
-static constexpr uint8_t CS_ALIGNMENT_MARKER_MASK = 0x10; // bit 4 (implementation-defined alignment marker flag)
-static constexpr size_t CS_TZ_OFFSET_LO_INDEX = 18; // byte 19 low
-static constexpr size_t CS_TZ_OFFSET_HI_INDEX = 19; // byte 20 high
+static constexpr size_t CS_UTC_FLAGS_INDEX = kUtcFlagsIndex;
+static constexpr uint8_t CS_UTC_VALID_MASK = kUtcValidMask;
+static constexpr uint8_t CS_LEAP_PENDING_MASK = kLeapPendingMask;
+static constexpr uint8_t CS_DST_MASK = kDstMask;
+static constexpr uint8_t CS_NON_AUDIO_MASK = kNonAudioMask;
+static constexpr uint8_t CS_ALIGNMENT_MARKER_MASK = kAlignmentMarkerMask;
+static constexpr size_t CS_TZ_OFFSET_LO_INDEX = kTzOffsetLoIndex;
+static constexpr size_t CS_TZ_OFFSET_HI_INDEX = kTzOffsetHiIndex;
 // Date/time mapping start (implementation-defined, contiguous 6 bytes for YY MM DD HH MM SS)
 // Revised date/time mapping within 24-byte channel status block (indices 0..23).
 // Use bytes 12..17 (indices 11..16) for YY MM DD HH MM SS to avoid collision with:
 //  - byte 17 (UTC flags) already used
 //  - bytes 18-19 (timezone offset)
-static constexpr size_t CS_DT_START_INDEX = 11; // byte 12
-static constexpr size_t CS_DT_END_INDEX   = 16; // inclusive (byte 17 is flags)
+static constexpr size_t CS_DT_START_INDEX = kDateTimeStartIndex; // byte 12
+static constexpr size_t CS_DT_END_INDEX   = kDateTimeEndIndex;   // inclusive (byte 17 is flags)
 
 static inline bool tz_offset_in_range(int32_t minutes) {
     // Common practical bounds: UTC-12:00 (-720) .. UTC+14:00 (+840)
@@ -131,7 +134,8 @@ static inline bool tz_offset_in_range(int32_t minutes) {
 
 std::optional<UTCInfo> ChannelStatusUtils::extract_utc_info(const uint8_t* channelStatus, size_t length) {
     if (!channelStatus) return std::nullopt;
-    if (length <= CS_TZ_OFFSET_HI_INDEX) return std::nullopt;
+    // Enforce full channel status block size for Annex A operations
+    if (length < kChannelStatusMinBytes) return std::nullopt;
     UTCInfo info{};
     auto utcValidOpt = read_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_UTC_VALID_MASK);
     auto leapOpt = read_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_LEAP_PENDING_MASK);
@@ -151,7 +155,8 @@ std::optional<UTCInfo> ChannelStatusUtils::extract_utc_info(const uint8_t* chann
 
 bool ChannelStatusUtils::set_utc_info(uint8_t* channelStatus, size_t length, const UTCInfo& info) {
     if (!channelStatus) return false;
-    if (length <= CS_TZ_OFFSET_HI_INDEX) return false;
+    // Enforce full channel status block size for Annex A operations
+    if (length < kChannelStatusMinBytes) return false;
     if (!tz_offset_in_range(info.timezoneOffsetMinutes)) return false;
     // Write flags
     if (!write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_UTC_VALID_MASK, info.utcValid)) return false;
@@ -178,7 +183,8 @@ static inline bool dt_fields_in_range(const DateTimeFields& dt) {
 
 bool ChannelStatusUtils::set_datetime_info(uint8_t* channelStatus, size_t length, const DateTimeFields& dt) {
     if (!channelStatus) return false;
-    if (length <= CS_DT_END_INDEX) return false; // need at least 17+1 bytes (index 16 accessible)
+    // Enforce full channel status block size for Annex A operations
+    if (length < kChannelStatusMinBytes) return false; // require 24-byte block
     if (!dt_fields_in_range(dt)) return false;
     // Write UTC flag and leap-second into UTC flags byte, reuse existing helpers
     if (!write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_UTC_VALID_MASK, dt.utc)) return false;
@@ -195,7 +201,8 @@ bool ChannelStatusUtils::set_datetime_info(uint8_t* channelStatus, size_t length
 
 std::optional<DateTimeFields> ChannelStatusUtils::extract_datetime_info(const uint8_t* channelStatus, size_t length) {
     if (!channelStatus) return std::nullopt;
-    if (length <= CS_DT_END_INDEX) return std::nullopt;
+    // Enforce full channel status block size for Annex A operations
+    if (length < kChannelStatusMinBytes) return std::nullopt;
     DateTimeFields dt{};
     dt.year   = channelStatus[CS_DT_START_INDEX + 0];
     dt.month  = channelStatus[CS_DT_START_INDEX + 1];
