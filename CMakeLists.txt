@@ -7,6 +7,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(BUILD_TESTS "Build C++ tests" ON)
+option(ENABLE_COVERAGE "Enable code coverage instrumentation (GCC/Clang only)" OFF)
+
+# Optional coverage flags for GCC/Clang; no effect on MSVC/Windows
+if(ENABLE_COVERAGE)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    message(STATUS "Enabling coverage flags (-O0 -g --coverage)")
+    add_compile_options(-O0 -g --coverage)
+    add_link_options(--coverage)
+  else()
+    message(WARNING "ENABLE_COVERAGE requested but not supported for compiler: ${CMAKE_CXX_COMPILER_ID}")
+  endif()
+endif()
 
 add_library(aes11_standards STATIC
     lib/Standards/AES/AES11/2009/core/timing_snapshot_service.cpp

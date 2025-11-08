@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-test-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: sudo apt-get update && sudo apt-get install -y lcov gcovr
+
+      - name: Configure (Coverage Enabled)
+        run: |
+          cmake -S . -B build -DENABLE_COVERAGE=ON -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build --config Debug -- -j 2
+
+      - name: Run tests
+        run: ctest --test-dir build -C Debug --output-on-failure
+
+      - name: Generate coverage report
+        run: |
+          gcovr -r . --exclude-directories build/_deps --exclude 'tests/.*' --xml build/coverage.xml --html-details build/coverage.html --print-summary
+          gcovr -r . --exclude-directories build/_deps --exclude 'tests/.*' --json build/coverage.json
+
+      - name: Enforce coverage threshold
+        run: |
+          COVERAGE_PCT=$(gcovr -r . --exclude-directories build/_deps --exclude 'tests/.*' --summary | awk '/lines:/ {print $2}' | sed 's/%//')
+          echo "Line coverage: ${COVERAGE_PCT}%";
+          if [ "$(printf '%.0f' "$COVERAGE_PCT")" -lt 80 ]; then
+            echo "Coverage below 80% threshold"; exit 1; fi
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            build/coverage.xml
+            build/coverage.html
+            build/coverage.json
+
+  build-test-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release -- /m
+
+      - name: Run tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-test-results
+          path: build/Testing

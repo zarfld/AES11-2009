@@ -20,6 +20,15 @@ All code in this phase remains vendor/OS-agnostic and testable without hardware.
 - Build: CMake
 - Tests: GoogleTest (unit); specs mapped from TEST-* documents
 
+## CI and Quality Gates
+
+- GitHub Actions workflow (`.github/workflows/ci.yml`) builds on Linux and Windows, runs all tests, and enforces line coverage ≥ 80% on Linux via gcovr.
+- Local coverage run (Linux/WSL/macOS with GCC/Clang):
+  - Configure with coverage flags: `cmake -S . -B build -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug`
+  - Build and test: `cmake --build build --config Debug && ctest --test-dir build -C Debug`
+  - Generate report (example): `gcovr -r . --exclude 'tests/.*' --xml build/coverage.xml --html-details build/coverage.html`
+  - Threshold check: ensure reported line coverage ≥ 80%.
+
 ## Directory layout
 
 lib/Standards/
@@ -38,30 +47,30 @@ lib/Standards/
 
 ## Milestones (TDD)
 
-1. Scaffolding
+Milestone 1: Scaffolding
 
-  - Top-level CMakeLists and library targets for aes11_2009 and standards_common
-  - Add namespaces and headers with docblocks referencing AES sections (by number only)
+- Top-level CMakeLists and library targets for aes11_2009 and standards_common
+- Namespaces and headers with docblocks referencing AES sections (numbers only)
 
-1. Timing primitives
+Milestone 2: Timing primitives
 
-  - Implement DES-I-002 mock (deterministic monotonic clock + sample counter)
-  - Tests: TEST-TIMESRC-SNAPSHOT-001/002
+- Implement DES-I-002 mock (deterministic monotonic clock + sample counter)
+- Tests: TEST-TIMESRC-SNAPSHOT-001/002
 
-1. Timing Window Processor
+Milestone 3: Timing Window Processor
 
-  - Implement DES-C-003 (Welford O(1) aggregates, circular window)
-  - Tests: TEST-DM-TIMINGWIN-001/002/003; degradation thresholds
+- Implement DES-C-003 (Welford O(1) aggregates, circular window)
+- Tests: TEST-DM-TIMINGWIN-001/002/003; degradation thresholds
 
-1. Protocol core (skeleton)
+Milestone 4: Protocol core (skeleton)
 
-  - DES-C-001 state enums, TRP handling, lock acquisition basics
-  - Tests: TEST-DARS-STATE-001; basic jitter acceptance
+- DES-C-001 state enums, TRP handling, lock acquisition basics
+- Tests: TEST-DARS-STATE-001; basic jitter acceptance
 
-1. Synchronization manager (skeleton)
+Milestone 5: Synchronization manager (skeleton)
 
-  - DES-C-002 selection by priority + stability, hysteresis, forced reselection, degradation flags, holdover drift
-  - Tests: TEST-SYNC-SELECT-001, TEST-SYNC-DEGRADE-001, TEST-SYNC-RESELECT-001, TEST-SYNC-HOLDOVER-001
+- DES-C-002 selection by priority + stability, hysteresis, forced reselection, degradation flags, holdover drift
+- Tests: TEST-SYNC-SELECT-001, TEST-SYNC-DEGRADE-001, TEST-SYNC-RESELECT-001, TEST-SYNC-HOLDOVER-001
 
 ## Acceptance criteria for Phase 05 start
 
@@ -74,6 +83,7 @@ lib/Standards/
 
 - External AES3/AES5 repos may be added later via FetchContent; not required to start
 - All comments must avoid reproducing copyrighted standard text; reference section numbers only
+- Reliability hooks: expose error paths via return codes; tests assert failure cases (e.g., buffer length guard, leap-second rule). Structured logging can be added in service layer; standards layer remains pure and hardware-agnostic.
 
 ## Traceability
 
