@@ -114,6 +114,13 @@ public:
     // adjusted when cross-referenced with authoritative layout; tests enforce preservation of other bits.
     static std::optional<bool> read_non_audio(const uint8_t* channelStatus, size_t length);
     static bool set_non_audio(uint8_t* channelStatus, size_t length, bool enabled);
+
+    // --- Alignment Marker Flag (implementation-defined) ---
+    // We allocate bit4 (0x10) of the UTC flags byte (index 17) for an alignment/validity marker.
+    // This internal flag can help tests simulate alignment metadata without reproducing any
+    // copyrighted specification layout.
+    static std::optional<bool> read_alignment_marker(const uint8_t* channelStatus, size_t length);
+    static bool set_alignment_marker(uint8_t* channelStatus, size_t length, bool enabled);
 };
 
 } // namespace core

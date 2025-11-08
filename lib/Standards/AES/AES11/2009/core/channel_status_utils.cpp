@@ -113,6 +113,7 @@ static constexpr uint8_t CS_UTC_VALID_MASK = 0x01; // bit 0
 static constexpr uint8_t CS_LEAP_PENDING_MASK = 0x02; // bit 1
 static constexpr uint8_t CS_DST_MASK = 0x04; // bit 2 (implementation-defined DST flag)
 static constexpr uint8_t CS_NON_AUDIO_MASK = 0x08; // bit 3 (implementation-defined non-audio/content-type flag)
+static constexpr uint8_t CS_ALIGNMENT_MARKER_MASK = 0x10; // bit 4 (implementation-defined alignment marker flag)
 static constexpr size_t CS_TZ_OFFSET_LO_INDEX = 18; // byte 19 low
 static constexpr size_t CS_TZ_OFFSET_HI_INDEX = 19; // byte 20 high
 // Date/time mapping start (implementation-defined, contiguous 6 bytes for YY MM DD HH MM SS)
@@ -225,6 +226,14 @@ std::optional<bool> ChannelStatusUtils::read_non_audio(const uint8_t* channelSta
 
 bool ChannelStatusUtils::set_non_audio(uint8_t* channelStatus, size_t length, bool enabled) {
     return write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_NON_AUDIO_MASK, enabled);
+}
+
+std::optional<bool> ChannelStatusUtils::read_alignment_marker(const uint8_t* channelStatus, size_t length) {
+    return read_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_ALIGNMENT_MARKER_MASK);
+}
+
+bool ChannelStatusUtils::set_alignment_marker(uint8_t* channelStatus, size_t length, bool enabled) {
+    return write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_ALIGNMENT_MARKER_MASK, enabled);
 }
 
 } // namespace core

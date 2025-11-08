@@ -135,3 +135,24 @@ TEST(ChannelStatusAnnexATests, NonAudioFlagRoundTrip) {
     ASSERT_TRUE(n2.has_value());
     EXPECT_FALSE(*n2);
 }
+
+// New: Alignment marker flag roundtrip (implementation-defined bit mapping)
+TEST(ChannelStatusAnnexATests, AlignmentMarkerFlagRoundTrip) {
+    uint8_t cs[24]{};
+    // Expect default false
+    auto a0 = ChannelStatusUtils::read_alignment_marker(cs, sizeof(cs));
+    ASSERT_TRUE(a0.has_value());
+    EXPECT_FALSE(*a0);
+
+    // Set true
+    ASSERT_TRUE(ChannelStatusUtils::set_alignment_marker(cs, sizeof(cs), true));
+    auto a1 = ChannelStatusUtils::read_alignment_marker(cs, sizeof(cs));
+    ASSERT_TRUE(a1.has_value());
+    EXPECT_TRUE(*a1);
+
+    // Clear
+    ASSERT_TRUE(ChannelStatusUtils::set_alignment_marker(cs, sizeof(cs), false));
+    auto a2 = ChannelStatusUtils::read_alignment_marker(cs, sizeof(cs));
+    ASSERT_TRUE(a2.has_value());
+    EXPECT_FALSE(*a2);
+}
