@@ -1,25 +1,60 @@
 #include "aes3_adapter.hpp"
 
+#include <cstddef>
+
+#ifdef AES3_INTEGRATION
+// Submodule layout provides headers in implementation src; include SubframeBuilder constants.
+#include "AES/AES3/Part3/_2009/subframe/subframe_builder.hpp"
+#endif
+
 namespace AES {
 namespace AES11 {
 namespace _2009 {
 namespace core {
 
-// Placeholder bit-pattern heuristic for preambles when AES3 external integration is not enabled.
-// Note: Real detection must use AES3 repository utilities.
-bool AES3Adapter::detect_preamble(const uint8_t* frameBytes, size_t bitLength) {
-    if (!frameBytes || bitLength < 16) return false;
-    // Simple heuristic: check first two bytes not all-zero or all-one (avoid obviously invalid data)
-    uint16_t first = static_cast<uint16_t>(frameBytes[0] << 8) | frameBytes[1];
-    return first != 0x0000 && first != 0xFFFF;
+// Detect preamble from first preamble byte (LSB-first representation of time slots 0-3)
+bool AES3Adapter::detect_preamble(const uint8_t* frameBytes, size_t bitLength) noexcept {
+    if (!frameBytes || bitLength < 8) return false;
+
+    const uint8_t preamble_byte = frameBytes[0];
+
+#ifdef AES3_INTEGRATION
+    // Use patterns from subframe builder constants
+    return (preamble_byte == AES::AES3::Part3::_2009::subframe::SubframeBuilder::PREAMBLE_X_PATTERN)
+        || (preamble_byte == AES::AES3::Part3::_2009::subframe::SubframeBuilder::PREAMBLE_Y_PATTERN)
+        || (preamble_byte == AES::AES3::Part3::_2009::subframe::SubframeBuilder::PREAMBLE_Z_PATTERN);
+#else
+    return (preamble_byte == 0xE2u) || (preamble_byte == 0xE4u) || (preamble_byte == 0xE8u);
+#endif
 }
 
-TRPInfo AES3Adapter::extract_trp(const uint8_t* frameBytes, size_t bitLength) {
-    TRPInfo info{false, std::nullopt};
+TRPInfo AES3Adapter::extract_trp(const uint8_t* frameBytes, size_t bitLength) noexcept {
+    TRPInfo info{};
+    if (!frameBytes || bitLength < 8) return info;
+
+    const uint8_t preamble_byte = frameBytes[0];
     if (!detect_preamble(frameBytes, bitLength)) return info;
-    // In real integration: Identify X or Z preamble and its transition as TRP.
-    // Scaffolding: claim valid without computing a reliable offset.
-    info.valid = true;
+
+#ifdef AES3_INTEGRATION
+    if (preamble_byte == AES::AES3::Part3::_2009::subframe::SubframeBuilder::PREAMBLE_X_PATTERN)
+        info.type = TRPInfo::PreambleType::X;
+    else if (preamble_byte == AES::AES3::Part3::_2009::subframe::SubframeBuilder::PREAMBLE_Y_PATTERN)
+        info.type = TRPInfo::PreambleType::Y;
+    else if (preamble_byte == AES::AES3::Part3::_2009::subframe::SubframeBuilder::PREAMBLE_Z_PATTERN)
+        info.type = TRPInfo::PreambleType::Z;
+#else
+    if (preamble_byte == 0xE2u) info.type = TRPInfo::PreambleType::X;
+    else if (preamble_byte == 0xE4u) info.type = TRPInfo::PreambleType::Y;
+    else if (preamble_byte == 0xE8u) info.type = TRPInfo::PreambleType::Z;
+#endif
+
+    info.valid = (info.type != TRPInfo::PreambleType::Unknown);
+
+    // For TRP offset, treat the preamble start as bit offset 0 within the provided buffer.
+    // In richer pipelines, this can be derived from the exact X/Z transition position.
+    if (info.valid) {
+        info.preamble_offset_bits = static_cast<size_t>(0);
+    }
     return info;
 }
 

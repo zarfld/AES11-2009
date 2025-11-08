@@ -15,20 +15,39 @@ namespace _2009 {
 namespace core {
 
 struct TRPInfo {
-    bool valid;
-    // Timestamp is to be provided by caller from a timing HAL in real integration
-    // Here we expose only a Boolean validity and byte offset to the TRP edge in the frame buffer if available
-    std::optional<size_t> preamble_offset_bits;
+    bool valid{false};
+    // Timestamp would be provided externally (e.g., via injected timing interface)
+    // We expose: validity flag, detected preamble type, and bit offset to first preamble slot.
+    enum class PreambleType : uint8_t { Unknown=0, X=0xE2, Y=0xE4, Z=0xE8 };
+    PreambleType type{PreambleType::Unknown};
+    std::optional<size_t> preamble_offset_bits; // Bit index of first preamble slot (LSB first within pattern)
 };
 
 class AES3Adapter {
 public:
-    // Detect if a raw AES3 subframe buffer appears to have a valid X/Y/Z preamble pattern.
-    // This scaffolding uses a placeholder heuristic when AES3 external is unavailable.
-    static bool detect_preamble(const uint8_t* frameBytes, size_t bitLength);
+    /**
+     * @brief Detect if raw subframe bytes contain a valid AES3 preamble (X/Y/Z).
+     *
+     * When AES3_INTEGRATION is defined, delegates to external AES3 Part 3 PreambleGenerator logic.
+     * Otherwise uses a conservative local pattern match on first byte.
+     *
+     * @param frameBytes Pointer to subframe/frame buffer (must contain at least preamble byte)
+     * @param bitLength  Length of buffer expressed in bits (>= 8 required for preamble byte)
+     * @return true if a recognizable preamble pattern is found
+     */
+    static bool detect_preamble(const uint8_t* frameBytes, size_t bitLength) noexcept;
 
-    // Extract TRP-related information from raw bytes; in full integration, delegate to AES3 repo utilities.
-    static TRPInfo extract_trp(const uint8_t* frameBytes, size_t bitLength);
+    /**
+     * @brief Extract Timing Reference Point (TRP) information based on preamble.
+     *
+     * Uses AES3 preamble semantics: X (first subframe), Y (second), Z (block start).
+     * For AES11 DARS alignment we treat X or Z as potential timing reference boundaries per AES-11-2009 Section 3.3.
+     *
+     * @param frameBytes Pointer to subframe/frame buffer
+     * @param bitLength  Buffer length in bits
+     * @return TRPInfo structure with validity, preamble type and offset
+     */
+    static TRPInfo extract_trp(const uint8_t* frameBytes, size_t bitLength) noexcept;
 };
 
 } // namespace core

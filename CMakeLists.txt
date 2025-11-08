@@ -25,9 +25,54 @@ target_include_directories(aes11_standards PUBLIC
 )
 
 # Optional AES3 integration toggle (external repo). Default OFF in this repo.
-option(AES3_INTEGRATION "Enable integration with external AES3 repository" OFF)
+option(AES3_INTEGRATION "Enable integration with external AES3 repository (prefers git submodule)" OFF)
 if(AES3_INTEGRATION)
-  target_compile_definitions(aes11_standards PUBLIC AES3_INTEGRATION=1)
+  # Prefer git submodule at external/AES3-2009. Fallback to FetchContent if missing.
+  set(AES3_SUBMODULE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/AES3-2009)
+  if(EXISTS ${AES3_SUBMODULE_DIR}/05-implementation/CMakeLists.txt)
+    message(STATUS "Using AES3 git submodule at external/AES3-2009")
+    # Disable building AES3 tests/benchmarks to avoid duplicate GTest discovery issues in our integration build.
+    set(ENABLE_TESTING OFF CACHE BOOL "Disable AES3 submodule tests for integration" FORCE)
+    set(ENABLE_BENCHMARKS OFF CACHE BOOL "Disable AES3 submodule benchmarks for integration" FORCE)
+    add_subdirectory(external/AES3-2009/05-implementation aes3_2009_build EXCLUDE_FROM_ALL)
+    # Link to specific Part libraries needed for preamble handling.
+    if(TARGET aes3_part3_transport)
+      target_link_libraries(aes11_standards PUBLIC aes3_part3_transport)
+    endif()
+    if(TARGET aes3_part1_audio_coding)
+      target_link_libraries(aes11_standards PUBLIC aes3_part1_audio_coding)
+    endif()
+    target_include_directories(aes11_standards PUBLIC
+      ${AES3_SUBMODULE_DIR}/05-implementation/include
+      ${AES3_SUBMODULE_DIR}/05-implementation/src
+    )
+    target_compile_definitions(aes11_standards PUBLIC AES3_INTEGRATION=1)
+  else()
+    message(WARNING "AES3 submodule not found; falling back to FetchContent download.")
+    include(FetchContent)
+    FetchContent_Declare(
+      aes3_2009
+      GIT_REPOSITORY https://github.com/zarfld/AES3-2009.git
+      GIT_TAG        main
+    )
+    FetchContent_MakeAvailable(aes3_2009)
+    # Attempt to locate implementation CMake inside fetched source
+    if(EXISTS ${aes3_2009_SOURCE_DIR}/05-implementation/CMakeLists.txt)
+  set(ENABLE_TESTING OFF CACHE BOOL "Disable AES3 fetched tests for integration" FORCE)
+  set(ENABLE_BENCHMARKS OFF CACHE BOOL "Disable AES3 fetched benchmarks for integration" FORCE)
+  add_subdirectory(${aes3_2009_SOURCE_DIR}/05-implementation aes3_2009_build EXCLUDE_FROM_ALL)
+      if(TARGET aes3_part3_transport)
+        target_link_libraries(aes11_standards PUBLIC aes3_part3_transport)
+      endif()
+      target_include_directories(aes11_standards PUBLIC
+        ${aes3_2009_SOURCE_DIR}/05-implementation/include
+        ${aes3_2009_SOURCE_DIR}/05-implementation/src
+      )
+      target_compile_definitions(aes11_standards PUBLIC AES3_INTEGRATION=1)
+    else()
+      message(WARNING "AES3 implementation CMake not found; integration incomplete.")
+    endif()
+  endif()
 endif()
 
 if(BUILD_TESTS)
