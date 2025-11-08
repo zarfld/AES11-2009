@@ -1,3 +1,6 @@
 [submodule "external/AES3-2009"]
 	path = external/AES3-2009
 	url = https://github.com/zarfld/AES3-2009.git
+[submodule "external/AES5-2018"]
+	path = external/AES5-2018
+	url = https://github.com/zarfld/AES5-2018.git
