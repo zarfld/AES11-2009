@@ -8,7 +8,8 @@
 #include <cstdint>
 #include "Common/testing/fault_injection.hpp"
 #include "Common/reliability/metrics.hpp"
-#include "Standards/AES/AES11/2009/core/channel_status_utils.hpp"
+// Align include path with other tests to resolve header correctly
+#include "../../lib/Standards/AES/AES11/2009/core/channel_status_utils.hpp"
 
 using AES::AES11::_2009::core::ChannelStatusUtils;
 using AES::AES11::_2009::core::DateTimeFields;
