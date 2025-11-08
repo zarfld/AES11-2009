@@ -24,6 +24,7 @@ All code in this phase remains vendor/OS-agnostic and testable without hardware.
 
 - GitHub Actions workflow (`.github/workflows/ci.yml`) builds on Linux and Windows, runs all tests, and enforces line coverage ≥ 80% on Linux via gcovr.
 - Reliability metrics instrumentation: utcFailures, dateTimeFailures, leapSecondFailures, timezoneFailures counters (see `lib/Standards/Common/reliability/metrics.*`). Use `ReliabilityMetrics::resetForTesting()` for deterministic test isolation. Additional structured event sink planned (Phase 05 incremental).
+- Structured reliability event sink: register a process-wide sink via `Common::reliability::set_event_sink()` (see `lib/Standards/Common/reliability/events.*`). Metrics increments emit events (e.g., `utc_failure`, `timezone_failure`, `leap_second_failure`) as lightweight, hardware-agnostic structured signals. If no sink is set, emission is a no-op.
 - Local coverage run (Linux/WSL/macOS with GCC/Clang):
   - Configure with coverage flags: `cmake -S . -B build -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug`
   - Build and test: `cmake --build build --config Debug && ctest --test-dir build -C Debug`
