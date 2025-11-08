@@ -90,6 +90,15 @@ public:
     static std::optional<UTCInfo> extract_utc_info(const uint8_t* channelStatus, size_t length);
     // Apply UTCInfo into channel status block; returns false if buffer too small or values out of range.
     static bool set_utc_info(uint8_t* channelStatus, size_t length, const UTCInfo& info);
+
+    // --- Annex A Date/Time helpers (implementation-defined byte mapping; see cpp) ---
+    // Encode date/time fields directly into the channel status block.
+    // Uses a compact mapping (year, month, day, hour, minute, second) starting at a fixed offset.
+    // Returns false on invalid ranges, insufficient buffer, or leap-second rule violation.
+    static bool set_datetime_info(uint8_t* channelStatus, size_t length, const DateTimeFields& dt);
+
+    // Extract date/time fields from the channel status block; returns std::nullopt if invalid.
+    static std::optional<DateTimeFields> extract_datetime_info(const uint8_t* channelStatus, size_t length);
 };
 
 } // namespace core

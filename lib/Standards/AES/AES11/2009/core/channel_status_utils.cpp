@@ -113,6 +113,9 @@ static constexpr uint8_t CS_UTC_VALID_MASK = 0x01; // bit 0
 static constexpr uint8_t CS_LEAP_PENDING_MASK = 0x02; // bit 1
 static constexpr size_t CS_TZ_OFFSET_LO_INDEX = 18; // byte 19 low
 static constexpr size_t CS_TZ_OFFSET_HI_INDEX = 19; // byte 20 high
+// Date/time mapping start (implementation-defined, contiguous 6 bytes for YY MM DD HH MM SS)
+static constexpr size_t CS_DT_START_INDEX = 20; // bytes 21..26 (indices 20..25)
+static constexpr size_t CS_DT_END_INDEX   = 25; // inclusive
 
 static inline bool tz_offset_in_range(int32_t minutes) {
     // Common practical bounds: UTC-12:00 (-720) .. UTC+14:00 (+840)
@@ -151,6 +154,55 @@ bool ChannelStatusUtils::set_utc_info(uint8_t* channelStatus, size_t length, con
     channelStatus[CS_TZ_OFFSET_LO_INDEX] = static_cast<uint8_t>(raw & 0xFFu);
     channelStatus[CS_TZ_OFFSET_HI_INDEX] = static_cast<uint8_t>((raw >> 8) & 0xFFu);
     return true;
+}
+
+static inline bool dt_fields_in_range(const DateTimeFields& dt) {
+    if (dt.month < 1 || dt.month > 12) return false;
+    if (dt.day < 1 || dt.day > 31) return false;
+    if (dt.hour > 23) return false;
+    if (dt.minute > 59) return false;
+    // Allow second==59 always; disallow 60 (we represent leap via flag on second==59)
+    if (dt.second > 59) return false;
+    if (dt.year > 99) return false;
+    // If leapSecond flag is true, we expect second==59 to represent the leap boundary (no 60 stored)
+    if (dt.leapSecond && dt.second != 59) return false;
+    return true;
+}
+
+bool ChannelStatusUtils::set_datetime_info(uint8_t* channelStatus, size_t length, const DateTimeFields& dt) {
+    if (!channelStatus) return false;
+    if (length <= CS_DT_END_INDEX) return false;
+    if (!dt_fields_in_range(dt)) return false;
+    // Write UTC flag and leap-second into UTC flags byte, reuse existing helpers
+    if (!write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_UTC_VALID_MASK, dt.utc)) return false;
+    if (!write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_LEAP_PENDING_MASK, dt.leapSecond)) return false;
+    // Write compact YY MM DD HH MM SS
+    channelStatus[CS_DT_START_INDEX + 0] = dt.year;
+    channelStatus[CS_DT_START_INDEX + 1] = dt.month;
+    channelStatus[CS_DT_START_INDEX + 2] = dt.day;
+    channelStatus[CS_DT_START_INDEX + 3] = dt.hour;
+    channelStatus[CS_DT_START_INDEX + 4] = dt.minute;
+    channelStatus[CS_DT_START_INDEX + 5] = dt.second;
+    return true;
+}
+
+std::optional<DateTimeFields> ChannelStatusUtils::extract_datetime_info(const uint8_t* channelStatus, size_t length) {
+    if (!channelStatus) return std::nullopt;
+    if (length <= CS_DT_END_INDEX) return std::nullopt;
+    DateTimeFields dt{};
+    dt.year   = channelStatus[CS_DT_START_INDEX + 0];
+    dt.month  = channelStatus[CS_DT_START_INDEX + 1];
+    dt.day    = channelStatus[CS_DT_START_INDEX + 2];
+    dt.hour   = channelStatus[CS_DT_START_INDEX + 3];
+    dt.minute = channelStatus[CS_DT_START_INDEX + 4];
+    dt.second = channelStatus[CS_DT_START_INDEX + 5];
+    auto utcFlag = read_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_UTC_VALID_MASK);
+    auto leapFlag = read_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_LEAP_PENDING_MASK);
+    if (!utcFlag.has_value() || !leapFlag.has_value()) return std::nullopt;
+    dt.utc = *utcFlag;
+    dt.leapSecond = *leapFlag;
+    if (!dt_fields_in_range(dt)) return std::nullopt;
+    return dt;
 }
 
 } // namespace core
