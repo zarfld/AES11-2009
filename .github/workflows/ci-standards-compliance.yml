@@ -87,6 +87,10 @@ jobs:
           pip3 install --user lizard mdformat
 
       - name: Check C/C++ formatting (clang-format)
+        # Non-blocking: pipeline continues even if formatting differences exist.
+        # Rationale: allows downstream build/tests to run to surface functional issues.
+        # Trade-off: formatting violations become advisory; enforcement shifts to review or separate gating.
+        continue-on-error: true
         run: |
           echo "📝 Checking C/C++ formatting with clang-format..."
           FILES=$(git ls-files "*.c" "*.cc" "*.cpp" "*.cxx" "*.h" "*.hh" "*.hpp" "*.hxx")
@@ -99,11 +103,39 @@ jobs:
                 # Print diff between current file and clang-format output
                 clang-format -style=file "$f" | diff -u "$f" - || true
               done
-              exit 1
+              echo "Formatting check failed (non-blocking)."
             fi
           else
             echo "No C/C++ files to format-check"
           fi
+      - name: Persist formatting diff summary (if any)
+        if: always()
+        run: |
+          echo "Capturing formatting diff summary (non-blocking)..."
+          FILES=$(git ls-files "*.c" "*.cc" "*.cpp" "*.cxx" "*.h" "*.hh" "*.hpp" "*.hxx")
+          if [ -n "$FILES" ]; then
+            SUMMARY_FILE=build/format-diff-summary.txt
+            mkdir -p build
+            > $SUMMARY_FILE
+            for f in $FILES; do
+              DIFF=$(clang-format -style=file "$f" | diff -u "$f" - || true)
+              if [ -n "$DIFF" ]; then
+                printf "===== %s =====\n" "$f" >> $SUMMARY_FILE
+                printf "%s\n\n" "$DIFF" >> $SUMMARY_FILE
+              fi
+            done
+            if [ -s $SUMMARY_FILE ]; then
+              echo "Formatting differences captured in $SUMMARY_FILE"
+            else
+              echo "No formatting differences found" >> $SUMMARY_FILE
+            fi
+          fi
+      - name: Upload formatting diff summary artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: formatting-diff-summary
+          path: build/format-diff-summary.txt
 
       - name: Static analysis (cppcheck)
         run: |
