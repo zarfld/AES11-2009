@@ -17,14 +17,18 @@ namespace core {
 
 class SampleRateValidator {
 public:
-    // Returns true if the provided rate is an AES5-2018 standard base rate
-    // supported by AES-11 DARS (base family: 32k, 44.1k, 48k and multiples
-    // up to 192 kHz). This initial implementation validates common base
-    // rates required by the current design and tests.
+    struct ValidationResult {
+        bool isStandard {false};
+        double ppmError {0.0};
+    };
+
+    // Returns true if the provided rate is an AES5-2018 standard base or multiple (via AES5 repo when available)
     static bool is_aes5_standard(uint32_t rateHz);
 
-    // Returns true if measuredHz is within ±ppmTolerance parts-per-million
-    // of nominalHz. Useful for initial accuracy checks (REQ-F-DARS-008).
+    // Compute ppm error and return structured result (without tolerance decision)
+    static ValidationResult evaluate(uint32_t nominalHz, double measuredHz);
+
+    // Returns true if measuredHz is within ±ppmTolerance parts-per-million of nominalHz.
     static bool within_tolerance(uint32_t nominalHz, double measuredHz, double ppmTolerance);
 };
 
