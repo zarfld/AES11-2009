@@ -446,6 +446,8 @@ jobs:
   requirements-traceability:
     needs: [spec-validation]
     name: Requirements Traceability (ISO/IEC/IEEE 29148)
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
 
     steps:
@@ -485,6 +487,22 @@ jobs:
         with:
           name: traceability-matrix
           path: reports/traceability-matrix.md
+      - name: Commit updated traceability matrix (default branch)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        run: |
+          if [ -f reports/traceability-matrix.md ]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add reports/traceability-matrix.md
+            if ! git diff --cached --quiet; then
+              git commit -m "ci: update traceability matrix"
+              git push
+            else
+              echo "No traceability changes to commit"
+            fi
+          else
+            echo "reports/traceability-matrix.md not found; skipping commit"
+          fi
 
   # Phase 07: Verification & Validation (IEEE 1012)
   acceptance-tests:
