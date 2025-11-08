@@ -19,6 +19,7 @@ add_library(aes11_standards STATIC
   lib/Standards/AES/AES11/2009/core/channel_status_utils.cpp
   lib/Standards/AES/AES11/2009/core/aes3_adapter.cpp
   lib/Standards/AES/AES11/2009/core/sample_rate_validation.cpp
+  lib/Standards/AES/AES11/2009/core/aes5_adapter.cpp
 )
 
 target_include_directories(aes11_standards PUBLIC

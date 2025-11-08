@@ -53,14 +53,8 @@ bool SampleRateValidator::within_tolerance(uint32_t nominalHz, double measuredHz
 // provide stub behavior until a clean, out-of-namespace include strategy is
 // implemented (see TODO: Fix AES5 submodule compile errors).
 
-bool AES5Adapter::is_primary(uint32_t rateHz) {
-    // Stub: Only 48k recognized when adapter not wired
-    return rateHz == 48000u;
-}
-
-bool AES5Adapter::is_standard_rate(uint32_t rateHz) {
-    return SampleRateValidator::is_aes5_standard(rateHz);
-}
+// AES5Adapter method implementations moved to separate translation unit to
+// keep AES5 includes out of AES namespaces and avoid namespace pollution.
 
 } // namespace core
 } // namespace _2009
