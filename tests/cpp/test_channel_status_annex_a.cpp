@@ -9,6 +9,7 @@
 
 using AES::AES11::_2009::core::ChannelStatusUtils;
 using AES::AES11::_2009::core::UTCInfo;
+using AES::AES11::_2009::core::DateTimeFields;
 
 // These tests validate our implementation-level Annex A mapping behavior.
 // They DO NOT reproduce any AES-11 copyrighted content and rely on original
@@ -200,4 +201,51 @@ TEST(ChannelStatusAnnexATests, AlignmentMarkerFlagRoundTrip) {
     auto a2 = ChannelStatusUtils::read_alignment_marker(cs, sizeof(cs));
     ASSERT_TRUE(a2.has_value());
     EXPECT_FALSE(*a2);
+}
+
+// New RED test for REQ-F-CS-ANNEXA-ATOMIC: Atomic multi-flag commit
+// Verifies that staging DST, non-audio, and alignment flags and committing updates
+// the single flags byte in one write via injected test hook, avoiding partial states.
+TEST(ChannelStatusAnnexATests, AtomicMultiFlagCommit_AllOrNothing) {
+    // Arrange
+    uint8_t cs[24]{};
+
+    // Ensure initial flags off
+    ASSERT_TRUE(ChannelStatusUtils::set_dst_flag(cs, sizeof(cs), false));
+    ASSERT_TRUE(ChannelStatusUtils::set_non_audio(cs, sizeof(cs), false));
+    ASSERT_TRUE(ChannelStatusUtils::set_alignment_marker(cs, sizeof(cs), false));
+
+    // Spy hook to count writes to target byte
+    struct SpyContext { int calls = 0; uint8_t lastValue = 0; } spy{};
+
+    auto writeSpy = [](uint8_t* bytePtr, uint8_t value, void* ctx) {
+        auto* s = reinterpret_cast<SpyContext*>(ctx);
+        s->calls += 1;
+        s->lastValue = value;
+        // Perform the actual write
+        *bytePtr = value;
+    };
+
+    // Build staging with all three flags enabled
+    AES::AES11::_2009::core::ChannelStatusAtomicStaging staging;
+    staging.set_dst(true);
+    staging.set_non_audio(true);
+    staging.set_alignment_marker(true);
+
+    AES::AES11::_2009::core::AtomicCommitHooks hooks{writeSpy, &spy};
+
+    // Act
+    ASSERT_TRUE(staging.commit(cs, sizeof(cs), &hooks));
+
+    // Assert: hook called exactly once and all flags true
+    EXPECT_EQ(spy.calls, 1);
+    auto d = ChannelStatusUtils::read_dst_flag(cs, sizeof(cs));
+    auto n = ChannelStatusUtils::read_non_audio(cs, sizeof(cs));
+    auto a = ChannelStatusUtils::read_alignment_marker(cs, sizeof(cs));
+    ASSERT_TRUE(d.has_value());
+    ASSERT_TRUE(n.has_value());
+    ASSERT_TRUE(a.has_value());
+    EXPECT_TRUE(*d);
+    EXPECT_TRUE(*n);
+    EXPECT_TRUE(*a);
 }

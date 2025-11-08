@@ -3,7 +3,7 @@ Module: lib/Standards/AES/AES11/2009/core/channel_status_utils.hpp
 Phase: 05-implementation
 Traceability:
     Design: DES-C-001 (Channel Status Mapping Utilities)
-    Requirements: REQ-F-CS-ANNEXA-LEN, REQ-F-CS-ANNEXA-DT, REQ-F-CS-ANNEXA-TZ, REQ-F-CS-ANNEXA-FLAGS, REQ-F-CS-ANNEXA-LEAP
+    Requirements: REQ-F-CS-ANNEXA-LEN, REQ-F-CS-ANNEXA-DT, REQ-F-CS-ANNEXA-TZ, REQ-F-CS-ANNEXA-FLAGS, REQ-F-CS-ANNEXA-LEAP, REQ-F-CS-ANNEXA-ATOMIC
     Tests: TEST-UNIT-ChannelStatusUtilsTests, ChannelStatusAnnexATests.*, ChannelStatusDateTimeTests.*
 Notes: Provides grade identification and date/time encode/decode helpers for AES3 channel status.
              Implementation based on understanding of AES-11-2009 Sections 5.1.3 & Annex A; no copyrighted spec text reproduced.
@@ -128,6 +128,31 @@ public:
     // copyrighted specification layout.
     static std::optional<bool> read_alignment_marker(const uint8_t* channelStatus, size_t length);
     static bool set_alignment_marker(uint8_t* channelStatus, size_t length, bool enabled);
+};
+
+// --- Atomic multi-flag staging and commit (REQ-F-CS-ANNEXA-ATOMIC) ---
+// Allows staging DST, non-audio, and alignment marker flags and committing them
+// with a single write to the flags byte to avoid intermediate observable states.
+struct AtomicCommitHooks {
+    // Optional write hook used for testing/inspection; if null, direct memory write is used.
+    void (*write)(uint8_t* bytePtr, uint8_t value, void* ctx) = nullptr;
+    void* ctx = nullptr;
+};
+
+class ChannelStatusAtomicStaging {
+public:
+    ChannelStatusAtomicStaging& set_dst(bool enabled) { dst_ = enabled; return *this; }
+    ChannelStatusAtomicStaging& set_non_audio(bool enabled) { non_audio_ = enabled; return *this; }
+    ChannelStatusAtomicStaging& set_alignment_marker(bool enabled) { align_ = enabled; return *this; }
+
+    // Commit all staged flags atomically into channel status flags byte.
+    // Returns false if buffer is null or below required length.
+    bool commit(uint8_t* channelStatus, size_t length, const AtomicCommitHooks* hooks = nullptr) const;
+
+private:
+    bool dst_ {false};
+    bool non_audio_ {false};
+    bool align_ {false};
 };
 
 } // namespace core

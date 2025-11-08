@@ -3,7 +3,7 @@ Module: lib/Standards/AES/AES11/2009/core/channel_status_utils.cpp
 Phase: 05-implementation
 Traceability:
     Design: DES-C-001 (Channel Status Mapping Utilities)
-    Requirements: REQ-F-CS-ANNEXA-LEN, REQ-F-CS-ANNEXA-DT, REQ-F-CS-ANNEXA-TZ, REQ-F-CS-ANNEXA-FLAGS, REQ-F-CS-ANNEXA-LEAP
+    Requirements: REQ-F-CS-ANNEXA-LEN, REQ-F-CS-ANNEXA-DT, REQ-F-CS-ANNEXA-TZ, REQ-F-CS-ANNEXA-FLAGS, REQ-F-CS-ANNEXA-LEAP, REQ-F-CS-ANNEXA-ATOMIC
     Tests: TEST-UNIT-ChannelStatusUtilsTests, ChannelStatusAnnexATests.*, ChannelStatusDateTimeTests.*
 Notes: Implements flag, grade, UTC/timezone, and date/time mapping logic with validation guards.
              No copyrighted AES specification content reproduced; behavior derived from standard understanding.
@@ -251,6 +251,27 @@ std::optional<bool> ChannelStatusUtils::read_alignment_marker(const uint8_t* cha
 
 bool ChannelStatusUtils::set_alignment_marker(uint8_t* channelStatus, size_t length, bool enabled) {
     return write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_ALIGNMENT_MARKER_MASK, enabled);
+}
+
+// --- Atomic multi-flag commit implementation ---
+bool ChannelStatusAtomicStaging::commit(uint8_t* channelStatus, size_t length, const AtomicCommitHooks* hooks) const {
+    if (!channelStatus) return false;
+    if (length < kChannelStatusMinBytes) return false;
+    // Compute new flags byte with a single masked update preserving other bits
+    uint8_t current = channelStatus[CS_UTC_FLAGS_INDEX];
+    const uint8_t mask = static_cast<uint8_t>(CS_DST_MASK | CS_NON_AUDIO_MASK | CS_ALIGNMENT_MARKER_MASK);
+    uint8_t valueMasked = 0;
+    if (dst_)       valueMasked = static_cast<uint8_t>(valueMasked | CS_DST_MASK);
+    if (non_audio_) valueMasked = static_cast<uint8_t>(valueMasked | CS_NON_AUDIO_MASK);
+    if (align_)     valueMasked = static_cast<uint8_t>(valueMasked | CS_ALIGNMENT_MARKER_MASK);
+    uint8_t updated = static_cast<uint8_t>((current & static_cast<uint8_t>(~mask)) | valueMasked);
+
+    if (hooks && hooks->write) {
+        hooks->write(&channelStatus[CS_UTC_FLAGS_INDEX], updated, hooks->ctx);
+    } else {
+        channelStatus[CS_UTC_FLAGS_INDEX] = updated;
+    }
+    return true;
 }
 
 } // namespace core
