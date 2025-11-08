@@ -101,6 +101,32 @@ Milestone 5: Synchronization manager (skeleton)
 - Reliability hooks: expose error paths via return codes; tests assert failure cases (e.g., buffer length guard, leap-second rule). Structured logging can be added in service layer; standards layer remains pure and hardware-agnostic.
 - Extended reliability counters added for leap-second rule violations and timezone range failures to support IEEE 1633 evidence collection. Future enhancement: lightweight event sink for external aggregation.
 
+## Reliability artifacts (Phase 05 evidence)
+
+- Operational Profile (OP): see `docs/reliability/operational-profile-AES11-DARS-2009.md`
+- SFMEA: see `docs/reliability/sfmea-AES11-DARS-2009.md`
+- Critical Items List (CIL): see `docs/reliability/cil-AES11-DARS-2009.md`
+- Defect Log: see `docs/reliability/defect-log.md` (machine-readable: `docs/reliability/defect-log.yaml`)
+- Coverage badge (CI): `docs/badges/coverage.svg`
+
+These artifacts support IEEE 1633 reliability program activities and Phase 06/07 data collection.
+
+## Traceability & reports
+
+- Requirements traceability matrix: `reports/traceability-matrix.md` (kept in-repo and refreshed by CI)
+- CI-generated trace JSON (artifact): `build/traceability.json` (download from CI artifacts)
+- Spec index (artifact): `build/spec-index.json`
+
+### Regenerate traceability locally (Windows PowerShell)
+
+```powershell
+py -3 scripts/validate-spec-structure.py
+py -3 scripts/generators/spec_parser.py
+py -3 scripts/generators/build_trace_json.py
+py -3 scripts/validate-trace-coverage.py --min-req 90 --min-req-adr 70 --min-req-scenario 60 --min-req-test 40
+py -3 scripts/generate-traceability-matrix.py
+```
+
 ## Traceability
 
 - Maps REQ → ARC → DES → TEST → CODE for core flow. Each test case references corresponding code unit and design ID.
