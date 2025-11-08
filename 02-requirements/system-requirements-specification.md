@@ -2108,7 +2108,7 @@ Scenario: Atomic compare-and-swap for lock-free algorithm
 
 Requirements for AES-11-2009 compliance validation per StR-COMP-001.
 
-#### REQ-F-CONFORM-001: AES-11 Section 5 Conformance Test Suite
+#### REQ-F-CONFORM-001: AES-11 Section 5 Conformance Test Suite [ADR: ADR-001, ADR-002, ADR-003, ADR-004, ADR-005] [Design: DES-C-001, DES-C-002, DES-C-003] [Tests: TEST-DARS-STATE-001, TEST-DM-TIMINGWIN-001, TEST-SYNC-SELECT-001] [Scenario: QA-SC-001, QA-SC-002]
 
 - **Trace to**: StR-COMP-001, StR-FUNC-001
 - **Priority**: High (P1)
@@ -2189,7 +2189,7 @@ Scenario: Phase relationship tolerance conformance at 48 kHz (Section 5.3.1, Tab
 
 ---
 
-#### REQ-F-CONFORM-002: Interoperability Testing Framework
+#### REQ-F-CONFORM-002: Interoperability Testing Framework [ADR: ADR-001, ADR-002, ADR-003] [Design: DES-C-002] [Tests: TEST-SYNC-SELECT-001, TEST-SYNC-RESELECT-001, TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-002]
 
 - **Trace to**: StR-COMP-002, StR-USER-002
 - **Priority**: High (P1)
@@ -2241,7 +2241,7 @@ Scenario: Three-vendor cascaded synchronization chain
 
 ---
 
-#### REQ-F-CONFORM-003: Section 6 Clock Jitter Test Suite
+#### REQ-F-CONFORM-003: Section 6 Clock Jitter Test Suite [ADR: ADR-003] [Design: DES-C-003] [Tests: TEST-DM-TIMINGWIN-001, TEST-DM-TIMINGWIN-002, TEST-DM-TIMINGWIN-003] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-FUNC-005, StR-QUAL-003
 - **Priority**: High (P1)
@@ -2376,7 +2376,7 @@ Scenario: Generate Section 6 compliance report
 
 ---
 
-#### REQ-F-CONFORM-004: Automated Regression Test Suite
+#### REQ-F-CONFORM-004: Automated Regression Test Suite [ADR: ADR-004, ADR-005] [Design: DES-C-001, DES-C-002] [Tests: TEST-SYNC-RESELECT-001, TEST-SYNC-HOLDOVER-001, TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-001, QA-SC-002]
 
 - **Trace to**: StR-FUNC-004, StR-QUAL-002
 - **Priority**: High (P1)
@@ -2513,7 +2513,7 @@ Scenario: Track test history over multiple commits
 
 ---
 
-#### REQ-F-CONFORM-005: Certification Evidence Package Generation
+#### REQ-F-CONFORM-005: Certification Evidence Package Generation [ADR: ADR-005] [Design: DES-C-001] [Tests: TEST-DARS-STATE-001, TEST-SYNC-SELECT-001] [Scenario: QA-SC-002]
 
 - **Trace to**: StR-FUNC-004, StR-QUAL-004
 - **Priority**: High (P1)
@@ -2653,7 +2653,7 @@ Scenario: Generate certification cover letter with executive summary
 
 ---
 
-#### REQ-F-CONFORM-006: Multi-Platform Test Execution Framework
+#### REQ-F-CONFORM-006: Multi-Platform Test Execution Framework [ADR: ADR-001, ADR-005] [Design: DES-C-001, DES-C-002] [Tests: TEST-SYNC-SELECT-001, TEST-SYNC-RESELECT-001] [Scenario: QA-SC-002]
 
 - **Trace to**: StR-FUNC-003, StR-QUAL-002
 - **Priority**: Medium (P2)
@@ -2798,7 +2798,7 @@ Scenario: Execute remote tests on embedded RTOS target
 
 ---
 
-#### REQ-F-CONFORM-007: Performance Benchmarking Suite
+#### REQ-F-CONFORM-007: Performance Benchmarking Suite [ADR: ADR-003] [Design: DES-C-003] [Tests: TEST-DM-TIMINGWIN-001, TEST-TIMESRC-SNAPSHOT-001, TEST-TIMESRC-SNAPSHOT-002] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-PERF-001, StR-QUAL-003
 - **Priority**: Medium (P2)
@@ -2943,7 +2943,7 @@ Scenario: Measure synchronization lock acquisition time
 
 ---
 
-#### REQ-F-CONFORM-008: Compliance Documentation Generator
+#### REQ-F-CONFORM-008: Compliance Documentation Generator [ADR: ADR-005] [Design: DES-C-001, DES-C-003] [Tests: TEST-DARS-STATE-001, TEST-DM-TIMINGWIN-001] [Scenario: QA-SC-001, QA-SC-002]
 
 - **Trace to**: StR-FUNC-004, StR-QUAL-004
 - **Priority**: Medium (P2)
@@ -3095,7 +3095,7 @@ Scenario: Identify coverage gaps and generate gap report
 
 Requirements for comprehensive error detection, recovery, and diagnostic capabilities per StR-REL-xxx.
 
-#### REQ-F-ERROR-001: Error Detection and Classification Framework
+#### REQ-F-ERROR-001: Error Detection and Classification Framework [ADR: ADR-002, ADR-003, ADR-004] [Design: DES-C-001, DES-C-002, DES-C-003] [Tests: TEST-DM-TIMINGWIN-001, TEST-SYNC-DEGRADE-001, TEST-SYNC-HOLDOVER-001] [Scenario: QA-SC-002]
 
 - **Trace to**: StR-REL-001, StR-REL-002, StR-USER-003
 - **Priority**: Critical (P0)
@@ -3208,7 +3208,7 @@ Scenario: SFMEA alignment for high-RPN failures
 
 ---
 
-#### REQ-F-ERROR-002: Automatic Error Recovery Strategies
+#### REQ-F-ERROR-002: Automatic Error Recovery Strategies [ADR: ADR-002, ADR-003] [Design: DES-C-002] [Tests: TEST-SYNC-RESELECT-001, TEST-SYNC-HOLDOVER-001, TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-002]
 
 - **Trace to**: StR-REL-002, StR-REL-004
 - **Priority**: High (P1)
@@ -3303,7 +3303,7 @@ Scenario: Successful phase drift recovery
 
 ---
 
-#### REQ-F-ERROR-003: Diagnostic Interface and Event Logging
+#### REQ-F-ERROR-003: Diagnostic Interface and Event Logging [ADR: ADR-003, ADR-004] [Design: DES-C-003] [Tests: TEST-TIMESRC-SNAPSHOT-001, TEST-TIMESRC-SNAPSHOT-002] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-USER-003, StR-REL-006
 - **Priority**: High (P1)
@@ -3403,7 +3403,7 @@ Scenario: Real-time logging overhead measurement
 
 ---
 
-#### REQ-F-ERROR-004: Fault Tolerance and Graceful Degradation
+#### REQ-F-ERROR-004: Fault Tolerance and Graceful Degradation [ADR: ADR-002, ADR-003] [Design: DES-C-002, DES-C-003] [Tests: TEST-SYNC-DEGRADE-001, TEST-SYNC-HOLDOVER-001] [Scenario: QA-SC-002]
 
 - **Trace to**: StR-REL-001, StR-REL-002, StR-USER-003
 - **Priority**: High (P1)
@@ -3539,7 +3539,7 @@ Scenario: Attempt automatic recovery of failed subsystems
 
 ---
 
-#### REQ-F-ERROR-005: Error Notification and Event System
+#### REQ-F-ERROR-005: Error Notification and Event System [ADR: ADR-004] [Design: DES-C-003] [Tests: TEST-TIMESRC-SNAPSHOT-001] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-USER-003, StR-REL-003
 - **Priority**: High (P1)
@@ -3697,7 +3697,7 @@ Scenario: Retrieve event history for debugging
 
 ---
 
-#### REQ-F-ERROR-006: Diagnostic and Health Monitoring Interface
+#### REQ-F-ERROR-006: Diagnostic and Health Monitoring Interface [ADR: ADR-003, ADR-004] [Design: DES-C-001, DES-C-003] [Tests: TEST-TIMESRC-SNAPSHOT-002, TEST-DM-TIMINGWIN-002] [Scenario: QA-SC-001, QA-SC-002]
 
 - **Trace to**: StR-USER-003, StR-QUAL-002, StR-REL-003
 - **Priority**: Medium (P2)
