@@ -218,7 +218,7 @@ Functional requirements define WHAT the system shall do, organized by feature ar
 
 Requirements for core Digital Audio Reference Signal protocol implementation per AES-11-2009.
 
-#### REQ-F-DARS-001: DARS Format Compliance
+#### REQ-F-DARS-001: DARS Format Compliance [ADR: ADR-001, ADR-002, ADR-003, ADR-004] [Design: DES-C-001, DES-I-001, DES-D-001] [Tests: TEST-DARS-STATE-001] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-FUNC-001, StR-COMP-001
 - **Related ADRs**: ADR-001, ADR-002, ADR-003, ADR-004
@@ -301,7 +301,7 @@ Scenario: Reject invalid preamble pattern
 
 ---
 
-#### REQ-F-DARS-002: Grade 1/2 Frequency Accuracy
+#### REQ-F-DARS-002: Grade 1/2 Frequency Accuracy [ADR: ADR-003, ADR-004] [Design: DES-C-001, DES-D-002] [Tests: TEST-SYNC-HOLDOVER-001] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-PERF-001, StR-FUNC-001
 - **Related ADRs**: ADR-003, ADR-004
@@ -405,7 +405,7 @@ Scenario: Grade mismatch warning
 
 Requirements for the 4 synchronization methods per AES-11-2009 Section 4.2.
 
-#### REQ-F-SYNC-001: DARS-Referenced Synchronization [Tests: TEST-DARS-STATE-001, TEST-SYNC-SELECT-001]
+#### REQ-F-SYNC-001: DARS-Referenced Synchronization [ADR: ADR-002, ADR-003, ADR-004] [Design: DES-C-002, DES-I-003, DES-D-002] [Tests: TEST-DARS-STATE-001, TEST-SYNC-SELECT-001, TEST-SYNC-RESELECT-001, TEST-SYNC-HOLDOVER-001, TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-001, QA-SC-002, QA-SC-003]
 
 - **Trace to**: StR-FUNC-001
 - **Related ADRs**: ADR-002, ADR-003, ADR-004
@@ -502,7 +502,7 @@ Scenario: Handle DARS frequency outside capture range
 
 ---
 
-#### REQ-F-SYNC-002: Audio-Input-Referenced Synchronization
+#### REQ-F-SYNC-002: Audio-Input-Referenced Synchronization [ADR: ADR-001, ADR-002, ADR-003] [Design: DES-C-002, DES-C-001, DES-D-002] [Tests: TEST-SYNC-SELECT-001, TEST-SYNC-HOLDOVER-001, TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-002, QA-SC-003]
 
 - **Trace to**: StR-FUNC-001
 - **Priority**: Critical (P0)
@@ -625,7 +625,7 @@ Scenario: Report input signal quality metrics
 
 ---
 
-#### REQ-F-SYNC-003: Sample Rate Conversion Support
+#### REQ-F-SYNC-003: Sample Rate Conversion Support [ADR: ADR-003, ADR-005] [Design: DES-C-002, DES-C-003] [Tests: TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-FUNC-001
 - **Priority**: High (P1)
@@ -694,7 +694,7 @@ Scenario: Convert 44.1 kHz input to 48 kHz system reference
 
 ---
 
-#### REQ-F-DARS-003: Capture Range Support [Design: DES-DARS-CAPTURE] [Tests: TEST-DARS-CAPTURE-001, TEST-DARS-CAPTURE-002, TEST-DARS-CAPTURE-003]
+#### REQ-F-DARS-003: Capture Range Support [ADR: ADR-003] [Design: DES-DARS-CAPTURE] [Tests: TEST-DARS-CAPTURE-001, TEST-DARS-CAPTURE-002, TEST-DARS-CAPTURE-003] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-PERF-002, StR-FUNC-001
 - **Priority**: Critical (P0)
@@ -780,7 +780,7 @@ Scenario: Lock acquisition time measurement
 
 ---
 
-#### REQ-F-DARS-004: Phase Relationship Tolerances [Design: DES-DARS-PHASE] [Tests: TEST-DARS-PHASE-001, TEST-DARS-PHASE-002, TEST-DARS-PHASE-003]
+#### REQ-F-DARS-004: Phase Relationship Tolerances [ADR: ADR-003] [Design: DES-DARS-PHASE] [Tests: TEST-DARS-PHASE-001, TEST-DARS-PHASE-002, TEST-DARS-PHASE-003] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-PERF-003, StR-FUNC-001
 - **Priority**: Critical (P0)
@@ -875,7 +875,7 @@ Scenario: Phase measurement across sampling frequencies
 
 ---
 
-#### REQ-F-DARS-005: Video-Referenced Synchronization
+#### REQ-F-DARS-005: Video-Referenced Synchronization [ADR: ADR-002, ADR-003, ADR-005] [Design: DES-C-002] [Tests: TEST-SYNC-DEGRADE-001] [Scenario: QA-SC-002, QA-SC-003]
 
 - **Trace to**: StR-FUNC-001
 - **Priority**: High (P1)
@@ -967,7 +967,7 @@ Scenario: Video frame rate validation
 
 ---
 
-#### REQ-F-DARS-006: GPS-Referenced Synchronization [Design: DES-DARS-GPS] [Tests: TEST-GPS-REF-001, TEST-GPS-REF-002, TEST-GPS-REF-003]
+#### REQ-F-DARS-006: GPS-Referenced Synchronization [ADR: ADR-003, ADR-005] [Design: DES-DARS-GPS, DES-C-002] [Tests: TEST-GPS-REF-001, TEST-GPS-REF-002, TEST-GPS-REF-003] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-FUNC-001
 - **Priority**: Medium (P2)
@@ -1049,7 +1049,7 @@ Scenario: GPS acquisition timeout and fallback
 
 ---
 
-#### REQ-F-DARS-007: Date and Time Distribution via Channel Status
+#### REQ-F-DARS-007: Date and Time Distribution via Channel Status [ADR: ADR-003, ADR-005] [Design: DES-C-001] [Scenario: QA-SC-003]
 
 - **Trace to**: StR-FUNC-002, StR-USER-002
 - **Priority**: Medium (P2)
@@ -1134,7 +1134,7 @@ Scenario: Handle leap second indication
 
 ---
 
-#### REQ-F-DARS-008: Sampling Frequency Validation and AES5 Compliance
+#### REQ-F-DARS-008: Sampling Frequency Validation and AES5 Compliance [ADR: ADR-005] [Design: DES-C-001] [Scenario: QA-SC-001]
 
 - **Trace to**: StR-COMP-001, StR-PERF-001
 - **Priority**: Critical (P0)
@@ -1244,7 +1244,7 @@ Scenario: Warn when frequency exceeds tolerance
 
 ### 3.2 Synchronization Requirements (continued)
 
-#### REQ-F-SYNC-004: Cascaded System Error Propagation Limits
+#### REQ-F-SYNC-004: Cascaded System Error Propagation Limits [ADR: ADR-003, ADR-004] [Design: DES-C-002, DES-C-003] [Tests: TEST-SYNC-DEGRADE-001, TEST-SYNC-RESELECT-001] [Scenario: QA-SC-001, QA-SC-003]
 
 - **Trace to**: StR-PERF-003, StR-REL-002
 - **Priority**: High (P1)
