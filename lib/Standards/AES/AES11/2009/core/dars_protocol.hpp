@@ -53,8 +53,12 @@ public:
             if (ev == DARSEvent::BeginAcquire) _state = DARSState::Acquire;
             break;
         case DARSState::Acquire:
-            if (ev == DARSEvent::FrameValid) _state = DARSState::Locked;
-            else if (ev == DARSEvent::FrameInvalid) _state = DARSState::Error;
+            if (ev == DARSEvent::FrameValid) {
+                _state = DARSState::Locked;
+            } else if (ev == DARSEvent::FrameInvalid) {
+                // Stay in Acquire on invalid frame; continue trying to lock
+                // (per TEST-DARS-STATE-001 expectation)
+            }
             break;
         case DARSState::Locked:
             if (ev == DARSEvent::FrameInvalid) _state = DARSState::Error;
