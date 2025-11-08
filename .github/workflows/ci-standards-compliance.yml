@@ -177,6 +177,17 @@ jobs:
           echo "📄 Validating Markdown formatting with mdformat (non-blocking)..."
           ~/.local/bin/mdformat --version
           ~/.local/bin/mdformat --check . || echo "⚠️ Markdown formatting differences detected"
+      - name: Defect Discovery Rate (DDR) computation
+        run: |
+          echo "🧮 Computing Defect Discovery Rate (DDR)..."
+          pip3 install --user pyyaml >/dev/null 2>&1 || true
+          DDR_MAX=5 python3 scripts/ci/compute-ddr.py || { echo "❌ DDR threshold exceeded"; exit 1; }
+      - name: Upload defect metrics artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: defect-metrics
+          path: build/defect-metrics.json
 
   # Phase 05: TDD - Test-Driven Development
   cxx-implementation:
