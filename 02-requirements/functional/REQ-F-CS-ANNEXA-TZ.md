@@ -14,6 +14,7 @@ traceability:
 # REQ-F-CS-ANNEXA-TZ: Timezone Offset Encoding
 
 Requirement ID: REQ-F-CS-ANNEXA-TZ
+Aliases: REQ-F-CS-ANNEXA-004
 
 ## Statement
 

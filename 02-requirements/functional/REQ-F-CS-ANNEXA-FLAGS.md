@@ -14,6 +14,7 @@ traceability:
 # REQ-F-CS-ANNEXA-FLAGS: UTC and Auxiliary Flag Mapping
 
 Requirement ID: REQ-F-CS-ANNEXA-FLAGS
+Aliases: REQ-F-CS-ANNEXA-002
 
 ## Statement
 

@@ -14,6 +14,7 @@ traceability:
 # REQ-F-CS-ANNEXA-ATOMIC: Atomic Multi-Flag Commit
 
 Requirement ID: REQ-F-CS-ANNEXA-ATOMIC
+Aliases: REQ-F-CS-ANNEXA-005
 
 ## Statement
 

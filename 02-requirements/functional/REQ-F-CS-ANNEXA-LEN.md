@@ -14,6 +14,7 @@ traceability:
 # REQ-F-CS-ANNEXA-LEN: Minimum Channel Status Block Length
 
 Requirement ID: REQ-F-CS-ANNEXA-LEN
+Aliases: REQ-F-CS-ANNEXA-001
 
 ## Statement
 
