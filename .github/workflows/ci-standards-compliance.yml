@@ -94,7 +94,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang-format cppcheck clang-tidy python3-pip
-          pip3 install --user lizard mdformat
+          pip3 install --user lizard mdformat pyyaml
 
       - name: Check C/C++ formatting (clang-format)
         # Non-blocking: pipeline continues even if formatting differences exist.
@@ -167,10 +167,20 @@ jobs:
             echo "No C/C++ files for clang-tidy"
           fi
 
-      - name: Complexity analysis (lizard)
+      - name: Quality metrics enforcement (complexity/length/params/duplication)
         run: |
-          echo "📊 Checking cyclomatic complexity with lizard..."
-          ~/.local/bin/lizard -l cpp -C ${{ env.MAX_CYCLOMATIC_COMPLEXITY }} lib tests
+          echo "📊 Enforcing quality metrics with lizard (complexity, length, parameters, duplication)..."
+          python3 scripts/ci/check-code-quality.py --config quality-gates.yml --out build/quality-metrics.json || {
+            echo "❌ Quality metrics threshold breached"; exit 1; }
+
+      - name: Upload quality metrics artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-metrics
+          path: |
+            build/quality-metrics.json
+            build/duplication-report.txt
 
       - name: Check Markdown formatting (mdformat)
         run: |

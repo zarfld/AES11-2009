@@ -1,0 +1,17 @@
+# Phase 05 quality gates (thresholds)
+# These thresholds are enforced in CI by scripts/ci/check-code-quality.py
+
+coverage:
+  minimum: 80
+
+complexity:
+  maximum: 10  # cyclomatic complexity per function
+
+method_length:
+  maximum: 50  # NLOC per function
+
+parameters:
+  maximum: 4   # max parameter count per function
+
+duplications:
+  maximum_percent: 3  # total duplicate rate percent (lizard -E duplicate)
