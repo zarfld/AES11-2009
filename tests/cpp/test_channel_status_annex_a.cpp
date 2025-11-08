@@ -1,3 +1,8 @@
+// TEST-UNIT-ChannelStatusAnnexATests
+// Traceability:
+//   Requirements: REQ-F-CS-ANNEXA-LEN, REQ-F-CS-ANNEXA-TZ, REQ-F-CS-ANNEXA-FLAGS, REQ-F-CS-ANNEXA-DT
+//   Design: DES-C-001
+//   Notes: Validates UTC/TZ roundtrips, flag read/write behavior, preservation of unmapped bytes, and length enforcement.
 #include <gtest/gtest.h>
 #include <cstring>
 #include "../../lib/Standards/AES/AES11/2009/core/channel_status_utils.hpp"
