@@ -1,7 +1,13 @@
-// Channel Status Utilities - DES-C-001 extension
-// Provides grade identification and date/time encode/decode helpers for AES3 channel status
-// Original implementation based on understanding of AES-11-2009 (Sections 5.1.3, Annex A) and AES3.
-// No copyrighted specification text reproduced.
+/*
+Module: lib/Standards/AES/AES11/2009/core/channel_status_utils.hpp
+Phase: 05-implementation
+Traceability:
+    Design: DES-C-001 (Channel Status Mapping Utilities)
+    Requirements: REQ-F-CS-ANNEXA-LEN, REQ-F-CS-ANNEXA-DT, REQ-F-CS-ANNEXA-TZ, REQ-F-CS-ANNEXA-FLAGS, REQ-F-CS-ANNEXA-LEAP
+    Tests: TEST-UNIT-ChannelStatusUtilsTests, ChannelStatusAnnexATests.*, ChannelStatusDateTimeTests.*
+Notes: Provides grade identification and date/time encode/decode helpers for AES3 channel status.
+             Implementation based on understanding of AES-11-2009 Sections 5.1.3 & Annex A; no copyrighted spec text reproduced.
+*/
 
 #ifndef AES_AES11_2009_CORE_CHANNEL_STATUS_UTILS_HPP
 #define AES_AES11_2009_CORE_CHANNEL_STATUS_UTILS_HPP

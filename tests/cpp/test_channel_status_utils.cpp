@@ -1,3 +1,8 @@
+// TEST-UNIT-ChannelStatusUtilsTests
+// Traceability:
+//   Requirements: REQ-F-CS-ANNEXA-LEN, REQ-F-CS-ANNEXA-DT, REQ-F-CS-ANNEXA-TZ, REQ-F-CS-ANNEXA-FLAGS
+//   Design: DES-C-001
+//   Notes: Validates grade roundtrip and compact DateTime encode/decode helpers.
 #include <gtest/gtest.h>
 #include "../../lib/Standards/AES/AES11/2009/core/channel_status_utils.hpp"
 
@@ -21,6 +26,14 @@ TEST(ChannelStatusUtilsTests, GradeEncodeDecodeRoundTrip) {
 
     ASSERT_TRUE(ChannelStatusUtils::set_grade(cs, sizeof(cs), DARSGrade::Unknown));
     EXPECT_EQ(ChannelStatusUtils::extract_grade(cs, sizeof(cs)), DARSGrade::Unknown);
+}
+
+// Explicitly cover reserved grade pattern handling and extraction mapping
+TEST(ChannelStatusUtilsTests, ReservedGradePatternHandled) {
+    uint8_t cs[24]{};
+    // Directly set raw bits to 0b11 via API and verify extract returns Reserved
+    ASSERT_TRUE(ChannelStatusUtils::set_grade(cs, sizeof(cs), DARSGrade::Reserved));
+    EXPECT_EQ(ChannelStatusUtils::extract_grade(cs, sizeof(cs)), DARSGrade::Reserved);
 }
 
 TEST(ChannelStatusUtilsTests, DateTimeEncodeDecodeRoundTrip) {

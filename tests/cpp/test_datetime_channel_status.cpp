@@ -1,6 +1,10 @@
 // Tests for REQ-F-DARS-007: Date and Time Distribution via Channel Status (Annex A)
 // RED phase of TDD: These tests will initially fail until implementation added.
 // No copyrighted AES-11 content reproduced; logic based on original understanding.
+// Traceability:
+//   Requirements: REQ-F-CS-ANNEXA-DT, REQ-F-CS-ANNEXA-LEN, REQ-F-CS-ANNEXA-LEAP
+//   Design: DES-C-001
+//   Tests: TEST-UNIT-DateTimeChannelStatus
 
 #include <gtest/gtest.h>
 #include "../../lib/Standards/AES/AES11/2009/core/channel_status_utils.hpp"
@@ -40,6 +44,20 @@ TEST(ChannelStatusDateTimeTests, EncodeDecodeLeapSecondBoundary) {
     auto out = *outOpt;
     EXPECT_TRUE(out.leapSecond);
     EXPECT_EQ(out.second, 59); // Represent leap second with flag
+}
+
+// Leap second flag must only be true when second == 59 (representation of leap boundary)
+TEST(ChannelStatusDateTimeTests, RejectLeapSecondFlagWhenSecondNot59) {
+    auto buf = makeBuffer();
+    // Invalid: leapSecond true but second=58
+    DateTimeFields dt{25, 11, 7, 14, 30, 58, true, true};
+    EXPECT_FALSE(ChannelStatusUtils::set_datetime_info(buf.data(), buf.size(), dt));
+    // Should not have modified buffer to contain leapSecond flag
+    auto outOpt = ChannelStatusUtils::extract_datetime_info(buf.data(), buf.size());
+    // Either no value (invalid extraction) or leapSecond false; we assert invalid set prevented flag
+    if (outOpt.has_value()) {
+        EXPECT_FALSE(outOpt->leapSecond);
+    }
 }
 
 TEST(ChannelStatusDateTimeTests, RejectInvalidMonth) {

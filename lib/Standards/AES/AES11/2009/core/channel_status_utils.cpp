@@ -1,3 +1,13 @@
+/*
+Module: lib/Standards/AES/AES11/2009/core/channel_status_utils.cpp
+Phase: 05-implementation
+Traceability:
+    Design: DES-C-001 (Channel Status Mapping Utilities)
+    Requirements: REQ-F-CS-ANNEXA-LEN, REQ-F-CS-ANNEXA-DT, REQ-F-CS-ANNEXA-TZ, REQ-F-CS-ANNEXA-FLAGS, REQ-F-CS-ANNEXA-LEAP
+    Tests: TEST-UNIT-ChannelStatusUtilsTests, ChannelStatusAnnexATests.*, ChannelStatusDateTimeTests.*
+Notes: Implements flag, grade, UTC/timezone, and date/time mapping logic with validation guards.
+             No copyrighted AES specification content reproduced; behavior derived from standard understanding.
+*/
 #include "channel_status_utils.hpp"
 #include "channel_status_constants.hpp"
 
