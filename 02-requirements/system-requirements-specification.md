@@ -7225,7 +7225,7 @@ This section provides definitions of technical terms, acronyms, and comprehensiv
 
 #### 10.4.3 Requirements by Category Performance
 
-##### Functional Requirements (40)
+#### 10.4.3.1 Functional Requirements (40)
 
 | Category | Count | Avg Score | Status |
 |----------|-------|-----------|--------|
@@ -7238,7 +7238,7 @@ This section provides definitions of technical terms, acronyms, and comprehensiv
 | **Integration (REQ-F-INTEG-xxx)** | 3 | 93/100 | ✅ Excellent |
 | **AVERAGE FUNCTIONAL** | **40** | **95.1/100** | ✅ **Excellent** |
 
-##### Non-Functional Requirements (20)
+#### 10.4.3.2 Non-Functional Requirements (20)
 
 | Category | Count | Avg Score | Status |
 |----------|-------|-----------|--------|
@@ -7253,7 +7253,7 @@ This section provides definitions of technical terms, acronyms, and comprehensiv
 
 **Only 2 requirements scored below 90/100, both in acceptable range:**
 
-##### Input Validation and Sanitization (REQ-NF-SEC-001)
+#### 10.4.4.1 Input Validation and Sanitization (REQ-NF-SEC-001)
 
 **Score**: 85/100 (Good, but below target) ⚠️
 
@@ -7279,7 +7279,7 @@ This section provides definitions of technical terms, acronyms, and comprehensiv
 
 **Impact**: Low - Current specification sufficient for Phase 03, improvements can be done during implementation feedback
 
-##### Secure Coding Practices (REQ-NF-SEC-003)
+#### 10.4.4.2 Secure Coding Practices (REQ-NF-SEC-003)
 
 **Score**: 87/100 (Good) ⚠️
 
