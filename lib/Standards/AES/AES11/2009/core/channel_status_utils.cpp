@@ -114,8 +114,12 @@ static constexpr uint8_t CS_LEAP_PENDING_MASK = 0x02; // bit 1
 static constexpr size_t CS_TZ_OFFSET_LO_INDEX = 18; // byte 19 low
 static constexpr size_t CS_TZ_OFFSET_HI_INDEX = 19; // byte 20 high
 // Date/time mapping start (implementation-defined, contiguous 6 bytes for YY MM DD HH MM SS)
-static constexpr size_t CS_DT_START_INDEX = 20; // bytes 21..26 (indices 20..25)
-static constexpr size_t CS_DT_END_INDEX   = 25; // inclusive
+// Revised date/time mapping within 24-byte channel status block (indices 0..23).
+// Use bytes 12..17 (indices 11..16) for YY MM DD HH MM SS to avoid collision with:
+//  - byte 17 (UTC flags) already used
+//  - bytes 18-19 (timezone offset)
+static constexpr size_t CS_DT_START_INDEX = 11; // byte 12
+static constexpr size_t CS_DT_END_INDEX   = 16; // inclusive (byte 17 is flags)
 
 static inline bool tz_offset_in_range(int32_t minutes) {
     // Common practical bounds: UTC-12:00 (-720) .. UTC+14:00 (+840)
@@ -171,7 +175,7 @@ static inline bool dt_fields_in_range(const DateTimeFields& dt) {
 
 bool ChannelStatusUtils::set_datetime_info(uint8_t* channelStatus, size_t length, const DateTimeFields& dt) {
     if (!channelStatus) return false;
-    if (length <= CS_DT_END_INDEX) return false;
+    if (length <= CS_DT_END_INDEX) return false; // need at least 17+1 bytes (index 16 accessible)
     if (!dt_fields_in_range(dt)) return false;
     // Write UTC flag and leap-second into UTC flags byte, reuse existing helpers
     if (!write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_UTC_VALID_MASK, dt.utc)) return false;
