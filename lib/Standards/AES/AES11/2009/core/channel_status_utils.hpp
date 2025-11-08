@@ -99,6 +99,14 @@ public:
 
     // Extract date/time fields from the channel status block; returns std::nullopt if invalid.
     static std::optional<DateTimeFields> extract_datetime_info(const uint8_t* channelStatus, size_t length);
+
+    // --- DST Flag Helpers (implementation-defined placeholder) ---
+    // Provides read/write access to a Daylight Saving Time indicator bit stored alongside UTC flags.
+    // We allocate bit2 of the UTC flags byte (index 17) for DST status, avoiding reproduction of any
+    // copyrighted layout; this is an internal mapping subject to adjustment when authoritative mapping
+    // is cross-verified.
+    static std::optional<bool> read_dst_flag(const uint8_t* channelStatus, size_t length);
+    static bool set_dst_flag(uint8_t* channelStatus, size_t length, bool enabled);
 };
 
 } // namespace core

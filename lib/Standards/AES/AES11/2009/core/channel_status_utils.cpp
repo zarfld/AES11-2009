@@ -111,6 +111,7 @@ bool ChannelStatusUtils::write_flag(uint8_t* buffer, size_t length, size_t byteI
 static constexpr size_t CS_UTC_FLAGS_INDEX = 17; // byte 18 (zero-based index 17)
 static constexpr uint8_t CS_UTC_VALID_MASK = 0x01; // bit 0
 static constexpr uint8_t CS_LEAP_PENDING_MASK = 0x02; // bit 1
+static constexpr uint8_t CS_DST_MASK = 0x04; // bit 2 (implementation-defined DST flag)
 static constexpr size_t CS_TZ_OFFSET_LO_INDEX = 18; // byte 19 low
 static constexpr size_t CS_TZ_OFFSET_HI_INDEX = 19; // byte 20 high
 // Date/time mapping start (implementation-defined, contiguous 6 bytes for YY MM DD HH MM SS)
@@ -207,6 +208,14 @@ std::optional<DateTimeFields> ChannelStatusUtils::extract_datetime_info(const ui
     dt.leapSecond = *leapFlag;
     if (!dt_fields_in_range(dt)) return std::nullopt;
     return dt;
+}
+
+std::optional<bool> ChannelStatusUtils::read_dst_flag(const uint8_t* channelStatus, size_t length) {
+    return read_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_DST_MASK);
+}
+
+bool ChannelStatusUtils::set_dst_flag(uint8_t* channelStatus, size_t length, bool enabled) {
+    return write_flag(channelStatus, length, CS_UTC_FLAGS_INDEX, CS_DST_MASK, enabled);
 }
 
 } // namespace core
