@@ -42,30 +42,27 @@ public:
         return false; // No transition if not Idle
     }
 
-    // Process a protocol event (future expansion). For skeleton only handles FrameValid in Acquire.
+    // Process a protocol event. Minimal state machine:
+    // Idle -> Acquire on BeginAcquire
+    // Acquire -> Locked on FrameValid; -> Error on FrameInvalid
+    // Locked -> Error on FrameInvalid
+    // Error -> Acquire on BeginAcquire (attempt recovery)
     void handleEvent(DARSEvent ev) {
-            switch (state_) {
-            case State::Idle:
-                if (event == Event::Start)
-                    state_ = State::Acquiring;
-                break;
-            case State::Acquiring:
-                if (event == Event::LockAchieved)
-                    state_ = State::Locked;
-                else if (event == Event::Error)
-                    state_ = State::ErrorState;
-                break;
-            case State::Locked:
-                if (event == Event::Error)
-                    state_ = State::ErrorState;
-                else if (event == Event::Start)
-                    state_ = State::Acquiring; // re-acquire
-                break;
-            case State::ErrorState:
-                if (event == Event::Start)
-                    state_ = State::Acquiring; // attempt recovery
-                break;
-            }
+        switch (_state) {
+        case DARSState::Idle:
+            if (ev == DARSEvent::BeginAcquire) _state = DARSState::Acquire;
+            break;
+        case DARSState::Acquire:
+            if (ev == DARSEvent::FrameValid) _state = DARSState::Locked;
+            else if (ev == DARSEvent::FrameInvalid) _state = DARSState::Error;
+            break;
+        case DARSState::Locked:
+            if (ev == DARSEvent::FrameInvalid) _state = DARSState::Error;
+            break;
+        case DARSState::Error:
+            if (ev == DARSEvent::BeginAcquire) _state = DARSState::Acquire;
+            break;
+        }
     }
 
 private:
