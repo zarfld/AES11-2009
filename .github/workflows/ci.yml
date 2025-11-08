@@ -18,6 +18,11 @@ jobs:
                   echo "🔎 Running Phase 05 traceability header check..."
                   python3 scripts/ci/check-traceability-headers.py
 
+            - name: Phase 05 Test Headers & Naming Enforcement
+              run: |
+                echo "🔎 Enforcing Phase 05 test header and naming conventions..."
+                python3 scripts/ci/check-test-headers-and-naming.py
+
             - name: Install build deps
               run: sudo apt-get update && sudo apt-get install -y lcov gcovr
 

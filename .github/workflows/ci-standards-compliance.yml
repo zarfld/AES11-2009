@@ -85,6 +85,11 @@ jobs:
           echo "🔎 Enforcing Phase 05 traceability headers before quality checks..."
           python3 scripts/ci/check-traceability-headers.py
 
+      - name: Phase 05 Test Headers & Naming Enforcement
+        run: |
+          echo "🔎 Enforcing Phase 05 test header and naming conventions..."
+          python3 scripts/ci/check-test-headers-and-naming.py
+
       - name: Install C/C++ quality tools
         run: |
           sudo apt-get update
