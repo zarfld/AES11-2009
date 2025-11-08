@@ -35,6 +35,27 @@ struct DateTimeFields {
     bool leapSecond;// indicates leap second event boundary
 };
 
+// Annex A UTC / Timezone mapping (conceptual) -- AES-11-2009 Annex A.
+// NOTE: Bit and byte positions selected here are implementation defaults and MUST
+// be verified against authoritative specification sections. We intentionally avoid
+// reproducing any copyrighted table content; only original logic referencing section numbers.
+// Layout assumptions (zero-based indices within channel status block):
+//   UTC flags byte index: 17 ("byte 18" professionally) holds:
+//       bit0: UTC valid flag
+//       bit1: Leap second pending (boundary proximity)
+//   Timezone offset: bytes 18-19 store signed minutes offset (little-endian)
+//       Range: - (12 * 60) .. + (14 * 60) typical global TZ span (validated)
+// These choices are parameterized; adjust constants if specification mapping differs.
+// All functions perform range and structural validation and will fail gracefully if
+// buffer length insufficient.
+
+struct UTCInfo {
+    bool utcValid {false};
+    bool leapSecondPending {false};
+    // Signed minutes offset from UTC. Example: +120 for UTC+02:00, -300 for UTC-05:00.
+    int16_t timezoneOffsetMinutes {0};
+};
+
 class ChannelStatusUtils {
 public:
     // Extract grade from channel status byte 4 (bits 0-1). Input: 192-byte channel status block (AES3 stereo frame block)
@@ -63,6 +84,12 @@ public:
     static std::optional<bool> read_flag(const uint8_t* buffer, size_t length, size_t byteIndex, uint8_t mask);
 
     static bool write_flag(uint8_t* buffer, size_t length, size_t byteIndex, uint8_t mask, bool enabled);
+
+    // --- Annex A UTC / Timezone helpers ---
+    // Extract UTCInfo from channel status block (returns std::nullopt if invalid or insufficient length)
+    static std::optional<UTCInfo> extract_utc_info(const uint8_t* channelStatus, size_t length);
+    // Apply UTCInfo into channel status block; returns false if buffer too small or values out of range.
+    static bool set_utc_info(uint8_t* channelStatus, size_t length, const UTCInfo& info);
 };
 
 } // namespace core

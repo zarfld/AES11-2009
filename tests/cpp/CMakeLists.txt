@@ -9,6 +9,7 @@ add_executable(aes11_tests
   test_channel_status_utils.cpp
   test_channel_status_bitfields.cpp
   test_aes3_adapter.cpp
+  test_channel_status_annex_a.cpp
 )
 
 target_link_libraries(aes11_tests
