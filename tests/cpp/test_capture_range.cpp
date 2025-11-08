@@ -27,3 +27,28 @@ TEST(CaptureRangeTests, PpmErrorComputation) {
     double ppm = CaptureRange::ppm_error(expected, measured);
     EXPECT_NEAR(ppm, 1000.0, 0.5);
 }
+
+// Grade timing precision simulation (REQ-F-DARS-002 / upcoming tests task)
+// Simulate frequency drift and classify using capture thresholds for Grade1/Grade2.
+TEST(CaptureRangeTests, GradeTimingPrecisionSimulation) {
+    double expected = 48000.0;
+    // Grade1 boundary just inside tolerance
+    double measured_g1_ok = expected * (1.0 + 1.5 / 1'000'000.0); // +1.5 ppm
+    double ppm_g1_ok = CaptureRange::ppm_error(expected, measured_g1_ok);
+    EXPECT_TRUE(CaptureRange::within_capture(ppm_g1_ok, Grade::Grade1));
+
+    // Grade1 violation just outside capture range
+    double measured_g1_bad = expected * (1.0 + 2.5 / 1'000'000.0); // +2.5 ppm
+    double ppm_g1_bad = CaptureRange::ppm_error(expected, measured_g1_bad);
+    EXPECT_FALSE(CaptureRange::within_capture(ppm_g1_bad, Grade::Grade1));
+
+    // Grade2 boundary inside tolerance
+    double measured_g2_ok = expected * (1.0 + 45.0 / 1'000'000.0); // +45 ppm
+    double ppm_g2_ok = CaptureRange::ppm_error(expected, measured_g2_ok);
+    EXPECT_TRUE(CaptureRange::within_capture(ppm_g2_ok, Grade::Grade2));
+
+    // Grade2 violation
+    double measured_g2_bad = expected * (1.0 + 55.0 / 1'000'000.0); // +55 ppm
+    double ppm_g2_bad = CaptureRange::ppm_error(expected, measured_g2_bad);
+    EXPECT_FALSE(CaptureRange::within_capture(ppm_g2_bad, Grade::Grade2));
+}
