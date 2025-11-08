@@ -48,6 +48,32 @@ bool SampleRateValidator::within_tolerance(uint32_t nominalHz, double measuredHz
     return r.ppmError <= ppmTolerance + 1e-12;
 }
 
+#ifdef AES5_INTEGRATION
+#include "AES/AES5/2018/core/frequency_validation/primary_frequency_validator.h"
+using AES::AES5::_2018::core::frequency_validation::PrimaryFrequencyValidator;
+#endif
+
+bool AES5Adapter::is_primary(uint32_t rateHz) {
+#ifdef AES5_INTEGRATION
+    return PrimaryFrequencyValidator::is_primary_frequency(rateHz);
+#else
+    (void)rateHz;
+    return false;
+#endif
+}
+
+bool AES5Adapter::is_standard_rate(uint32_t rateHz) {
+#ifdef AES5_INTEGRATION
+    using namespace AES::AES5::_2018::core::frequency_validation;
+    aes5_frequency_category_t cat = AES5_CATEGORY_UNKNOWN;
+    auto result = PrimaryFrequencyValidator::validate_sampling_frequency(rateHz, &cat);
+    return result == AES5_COMPLIANCE_PASS || result == AES5_COMPLIANCE_WARNING;
+#else
+    // Fallback to local notion of standard rates when AES5 not integrated
+    return SampleRateValidator::is_aes5_standard(rateHz);
+#endif
+}
+
 } // namespace core
 } // namespace _2009
 } // namespace AES11

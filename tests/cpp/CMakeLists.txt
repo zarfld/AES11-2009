@@ -13,6 +13,7 @@ add_executable(aes11_tests
   test_datetime_channel_status.cpp
   test_trp_detection_scan.cpp
   test_sample_rate_validation.cpp
+  test_aes5_adapter.cpp
 )
 
 target_link_libraries(aes11_tests

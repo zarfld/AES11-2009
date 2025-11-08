@@ -34,7 +34,7 @@ if(AES5_INTEGRATION)
   set(AES5_SUBMODULE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/AES5-2018)
   if(EXISTS ${AES5_SUBMODULE_DIR}/lib/Standards/AES/AES5/2018/core)
     message(STATUS "Using AES5 git submodule at external/AES5-2018")
-    # Headers only for now; AES5 repo may later expose its own targets.
+    # Collect include roots required for AES5 headers with deep relative paths.
     target_include_directories(aes11_standards PUBLIC
       ${AES5_SUBMODULE_DIR}/lib/Standards
       ${AES5_SUBMODULE_DIR}/lib/Standards/Common/interfaces

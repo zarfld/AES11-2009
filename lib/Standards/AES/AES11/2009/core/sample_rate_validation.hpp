@@ -32,6 +32,16 @@ public:
     static bool within_tolerance(uint32_t nominalHz, double measuredHz, double ppmTolerance);
 };
 
+// Thin wrapper adapter around AES5 PrimaryFrequencyValidator (if integrated) to avoid
+// exposing AES5 headers to callers. Provides primary and standard rate checks.
+class AES5Adapter {
+public:
+    // Returns true if 48 kHz is recognized as primary frequency (AES5 Section 5.1)
+    static bool is_primary(uint32_t rateHz);
+    // Returns true if rateHz is one of the recognized AES5 standard or multiple rates.
+    static bool is_standard_rate(uint32_t rateHz);
+};
+
 } // namespace core
 } // namespace _2009
 } // namespace AES11

@@ -2,29 +2,17 @@
 
 #include "AES/AES11/2009/core/sample_rate_validation.hpp"
 
-#ifdef AES5_INTEGRATION
-#include "AES/AES5/2018/rates/standard_sampling_rates.hpp"
-using AES::AES5::_2018::rates::StandardSamplingRates;
-#endif
 
 using AES::AES11::_2009::core::SampleRateValidator;
 
 // REQ-F-DARS-008: Validate sampling frequency against AES5; reject non-standard; check ppm tolerance and structured evaluation
 
 TEST(SampleRateValidationTests, AcceptsAES5StandardRates) {
-#ifdef AES5_INTEGRATION
-    EXPECT_TRUE(SampleRateValidator::is_aes5_standard(StandardSamplingRates::RATE_32000_HZ));
-    EXPECT_TRUE(SampleRateValidator::is_aes5_standard(StandardSamplingRates::RATE_44100_HZ));
-    EXPECT_TRUE(SampleRateValidator::is_aes5_standard(StandardSamplingRates::RATE_48000_HZ));
-    EXPECT_TRUE(SampleRateValidator::is_aes5_standard(StandardSamplingRates::RATE_96000_HZ));
-    EXPECT_TRUE(SampleRateValidator::is_aes5_standard(StandardSamplingRates::RATE_192000_HZ));
-#else
     EXPECT_TRUE(SampleRateValidator::is_aes5_standard(32000));
     EXPECT_TRUE(SampleRateValidator::is_aes5_standard(44100));
     EXPECT_TRUE(SampleRateValidator::is_aes5_standard(48000));
     EXPECT_TRUE(SampleRateValidator::is_aes5_standard(96000));
     EXPECT_TRUE(SampleRateValidator::is_aes5_standard(192000));
-#endif
 }
 
 TEST(SampleRateValidationTests, RejectsNonStandardRate) {
