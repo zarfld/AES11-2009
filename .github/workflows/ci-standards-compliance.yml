@@ -632,7 +632,7 @@ jobs:
           echo "⚠️ Snyk scan skipped (token not configured in lint environment)."
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.21.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: "fs"
           scan-ref: "."
